@@ -2,8 +2,10 @@
 __pycache__/
 *.py[cod]
 
-# Swp file
+# Swp file, mac ds_stire and ipython notebook checks
 .*.swp
+.DS_Store
+.ipynb*
 
 # C extensions
 *.so

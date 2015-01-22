@@ -72,3 +72,18 @@ def pd_print_full(x):
     pd.set_option('display.max_rows', len(x))
     print(x)
     pd.reset_option('display.max_rows')
+
+
+def save_df(df, filename, dest_dir='', prefix=''):
+    # Save the desired dataset in matrix format   
+    input_fpath = os.path.abspath(filename)
+    if not prefix:
+        prefix = 'matrix'
+
+    if not dest_dir:
+        dest_dir = os.path.dirname(input_fpath)
+
+    of_matrix = dest_dir + os.sep + prefix + os.path.basename(input_fpath) 
+    
+    df.to_csv(of_matrix, index=False, sep='\t') 
+    print("Wrote %s %d x %d matrix" %(os.path.basename(of_matrix), len(df.index), len(df.columns)-1))   
