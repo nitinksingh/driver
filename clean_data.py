@@ -42,24 +42,31 @@ def read_matrix_format_data(filename, keycol=0, **read_table_args):
 
     
 def preprocess_cna_data(filename, dest_dir):
-    """ Load CNA data, shorten long TCGA""" 
+    """ Load data, drop chromosome and cytoband columns and check if there are 
+    samples other than primary tumor type.
+    """
     df = read_matrix_format_data(filename)    
     # drop locus id and cytoband columns
     df.drop(df.columns[[1, 2]], axis=1, inplace=True)
-
-    categorize_samples(df, filename, dest_dir, prefix='CNA')
+    df = df.rename(columns = {'Gene Symbol':'Gene_Symbol'})
+    categorize_samples(df, filename, dest_dir, prefix='CNA_')
 
 
 def preprocess_rnaseq_data(filename, dest_dir):
-    """ Fix Gene Id and Symbol mix-up column"""
+    """ Load data fix Gene Id and Symbol mix-up column, drop genes with '?' 
+    symbols and check if there are samples other than primary tumor type.
+    """
     df = read_matrix_format_data(filename)
     gene_sym = [gid_sym.split('|')[0] for gid_sym in df['gene']]
     df['gene'] = gene_sym
-
-    categorize_samples(df, filename, dest_dir, prefix='RNASeq')
+    print "rna seq", df.shape
+    df = df[df.gene != '?']
+    df = df.rename(columns = {'gene':'Gene_Symbol'})
+    
+    categorize_samples(df, filename, dest_dir, prefix='')
 
 def categorize_samples(df, filename, dest_dir, prefix=''):
-    """ Check for duplicates, normal samples and then shorten """
+    """ Check for duplicates, normal samples and then shorten TCGA id """
     headers = df.columns[1:]
     samples = ['-'.join(x.split('-')[:3]) for x in headers] 
 
@@ -78,21 +85,23 @@ def categorize_samples(df, filename, dest_dir, prefix=''):
             normals.append(s)
 
     if primary_tumors:
-        p = ['-'.join(x.split('-')[:3]) for x in primary_tumors]
-        if len(set(p)) != len(p):
+        short_id = ['-'.join(x.split('-')[:3]) for x in primary_tumors]
+        if len(set(short_id)) != len(short_id):
             error("duplicate primary tumors?, total: %d, uniq: %d" %(len(p), len(set(p))))
         
         pt_df = df[[df.columns[0]] + primary_tumors]
-        save_df(pt_df, filename, dest_dir, 'PT-'+prefix)
+        pt_df.columns = [pt_df.columns[0]] + short_id
+        save_df(pt_df, filename, dest_dir, prefix+'TP_')
 
 
     if normals:
-        p = ['-'.join(x.split('-')[:3]) for x in normals]
-        if len(set(p)) != len(p):
+        short_id = ['-'.join(x.split('-')[:3]) for x in normals]
+        if len(set(short_id)) != len(short_id):
             error("duplicate normals?, total: %d, uniq: %d" %(len(p), len(set(p))))
        
         nb_df = df[[df.columns[0]] + normals]
-        save_df(nb_df, filename, dest_dir, prefix+'_NB_')
+        nb_df.columns = [nb_df.columns[0]] + short_id
+        save_df(nb_df, filename, dest_dir, prefix+'NB_')
 
     return
 
@@ -103,7 +112,7 @@ def preprocess_clinical_data(filename, dest_dir):
     
     return df
 
-def preprocess_mutation_data(mut_dir, dest_dir):
+def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
     mut_dir += os.sep + '*.maf.txt'
     mut_files = glob.glob(mut_dir)
 
@@ -138,9 +147,9 @@ def preprocess_mutation_data(mut_dir, dest_dir):
         joint_dict.update(df.to_dict())        
         joint_df = pd.DataFrame.from_dict(joint_dict)
         
-    joint_df.insert(0, 'Hugo_Symbol', joint_df.index)
+    joint_df.insert(0, 'Gene_Symbol', joint_df.index)
     joint_df.fillna(0, inplace=True)    
-    save_df(joint_df, 'mutation.txt', dest_dir, 'all_')
+    save_df(joint_df, 'mutation.txt', dest_dir, prefix+'_')
     
     return joint_df
     
@@ -165,7 +174,7 @@ def preprocess_gdac_data():
                     c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
                     '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
         print("\nProcessing %s mutation" %c)
-        df = preprocess_mutation_data(mut_dir, can_dir)
+        df = preprocess_mutation_data(mut_dir, can_dir, c)
 
         # CNA 
         cna_tar =   input_dir + os.sep + 'analyses__2014_10_17' + \
