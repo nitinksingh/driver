@@ -17,7 +17,8 @@ import glob
 
 def read_matrix_format_data(filename, keycol=0, **read_table_args):
     """ This is a generic function that reads data from a file which is in matrix
-    format. Returns pandas dataframe.
+    format. Returns pandas dataframe. Common arguments: index_col, names, 
+    skip_rows, na_values, usecols, delimiter
     """
     input_fpath = os.path.abspath(filename)
     # Read data into a data frame. First row is header, pass caller functions
@@ -175,7 +176,7 @@ def preprocess_gdac_data():
                     '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
         print("\nProcessing %s mutation" %c)
         df = preprocess_mutation_data(mut_dir, can_dir, c)
-
+        
         # CNA 
         cna_tar =   input_dir + os.sep + 'analyses__2014_10_17' + \
                     os.sep + c + os.sep + '20141017' + os.sep + GDAC_PREFIX + \
