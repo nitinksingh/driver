@@ -1,30 +1,55 @@
 import os
 import sys
 import urllib2
+from utils import error
 
 cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PANCANCER PANCAN8 PCPG PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
 cohort = cohort.split(" ")
-print cohort
 
-for d in cohort:
-    url = "http://gdac.broadinstitute.org/runs/analyses__2014_10_17/data/" + d + "/20141017/gdac.broadinstitute.org_" + d + "-TP.CopyNumber_Gistic2.Level_4.2014101700.0.0.tar.gz"
+dryrun = True
 
-    outdir = "./analyses__2014_10_17/" + d + "/20141017"
+for opt in [x.lower() for x in sys.argv[1:]]:
+    print "Option: ", opt
+    for d in cohort:
+        if opt in ['mrnaseq', 'clinical', 'mutation']:
+            root_url = 'http://gdac.broadinstitute.org/runs/stddata__2014_12_06/data/'
+            root_url += d + "/20141206/gdac.broadinstitute.org_" + d
+            outdir = './stddata__2014_12_06/' + d + '/20141206/'
+        if opt in ['gistic2']:
+            root_url = "http://gdac.broadinstitute.org/runs/analyses__2014_10_17/data/"
+            root_url += d + "/20141017/gdac.broadinstitute.org_" + d 
+            outdir = "./analyses__2014_10_17/" + d + "/20141017/"
+        
+        if opt == 'gistic2':
+            url = root_url + "-TP.CopyNumber_Gistic2.Level_4.2014101700.0.0.tar.gz"
+        elif opt == 'mrnaseq':
+            url = root_url + '.mRNAseq_Preprocess.Level_3.2014120600.0.0.tar.gz'
+        elif opt == 'clinical':
+            url = root_url + '.Merge_Clinical.Level_1.2014120600.0.0.tar.gz'
+        elif opt == 'mutation':
+            url = root_url + '.Mutation_Packager_Calls.Level_3.2014120600.0.0.tar.gz'
+        else:
+            error('Unknown option')
 
-    outf = outdir + os.sep + "gdac.broadinstitute.org_" + d + "-TP.CopyNumber_Gistic2.Level_4.2014101700.0.0.tar.gz" 
-    if os.path.exists(outf):
-        print d + " already downloaded. Skipping.."
-    else:
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
+        outf = outdir + os.path.basename(url)
+        if os.path.exists(outf):
+            print d + " already downloaded. Skipping.."
+        else:
+            if not os.path.exists(outdir):
+                os.makedirs(outdir)
 
-        print "Started ", d
-        try:
-            gdac = urllib2.urlopen(url)
-            with open(outf, 'wb') as f:
-                f.write(gdac.read())
+            try:
+                gdac = urllib2.urlopen(url)
 
-            print "Finished ", d
-        except urllib2.HTTPError:
-            print "****** Failed ***** ", d
-
+                if not dryrun:
+                    print "Started ", d
+                    with open(outf, 'wb') as f:
+                        f.write(gdac.read())
+                    print "Finished ", d
+                else:
+                    print "Will download: ", url
+                    print "Will save at: ", outf
+            except urllib2.HTTPError:
+                print "\n****** Failed ***** ", d
+                print url, "\n"
+                print "*"*20
