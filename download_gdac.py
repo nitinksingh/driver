@@ -1,12 +1,13 @@
 import os
 import sys
 import urllib2
+import hashlib 
 from utils import error
 
 cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PANCANCER PANCAN8 PCPG PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
 cohort = cohort.split(" ")
 
-dryrun = True
+dryrun = True 
 
 for opt in [x.lower() for x in sys.argv[1:]]:
     print "Option: ", opt
@@ -32,7 +33,7 @@ for opt in [x.lower() for x in sys.argv[1:]]:
             error('Unknown option')
 
         outf = outdir + os.path.basename(url)
-        if os.path.exists(outf):
+        if os.stat(outf).st_size != 0:
             print d + " already downloaded. Skipping.."
         else:
             if not os.path.exists(outdir):
@@ -45,7 +46,14 @@ for opt in [x.lower() for x in sys.argv[1:]]:
                     print "Started ", d
                     with open(outf, 'wb') as f:
                         f.write(gdac.read())
+                    # File downloaded check MD%
+                    with open(outf, 'r') as f:
+                        web_md5 = urllib2.urlopen(url+'.md5').read().split()[0]
+                        local_md5 = hashlib.md5(f.read()).hexdigest()
+                        if web_md5 != local_md5:
+                            error("*****md5sum MISMATCH *****")
                     print "Finished ", d
+                    
                 else:
                     print "Will download: ", url
                     print "Will save at: ", outf
