@@ -33,7 +33,7 @@ for opt in [x.lower() for x in sys.argv[1:]]:
             error('Unknown option')
 
         outf = outdir + os.path.basename(url)
-        if os.stat(outf).st_size != 0:
+        if os.path.exist(f) and os.stat(outf).st_size != 0:
             print d + " already downloaded. Skipping.."
         else:
             if not os.path.exists(outdir):
