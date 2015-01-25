@@ -139,7 +139,8 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
         df.replace(sub_dict.keys(), sub_dict.values(), inplace=True)
         df.drop_duplicates(inplace=True)
         df.set_index('Hugo_Symbol', drop=True, inplace=True)
-
+        if 'Unknown' in df.index:
+            df.drop("Unknown", axis=0, inplace=True)
         # Keep non-silent if a gene has both silent and non-silent mutations
         df.loc[df.index.get_duplicates()] == -1
 
