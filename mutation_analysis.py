@@ -13,7 +13,7 @@ import numpy as np
 import scipy.stats as stats
 from utils import *
 import clean_data as clean
-import pathways as path
+import pathway_analysis as pathway
 
 def analyze_pathway_mutations(can_type, refresh=0):
     """ Compute correlation between pathway wise mutation scores and non-silent
@@ -33,7 +33,7 @@ def analyze_pathway_mutations(can_type, refresh=0):
     data_dir = '../data/processed/' + can_type 
     mut_path = data_dir + os.sep + can_type + '_mutation.txt'
     
-    path_df = path.preprocess_pathway_data()
+    path_df = pathway.preprocess_pathway_data()
     mut_df = clean.read_matrix_format_data(mut_path, index_col=0)
 
     # Now compute correlation of TOTAL mutations in a sample vs. mutation count 
@@ -45,7 +45,7 @@ def analyze_pathway_mutations(can_type, refresh=0):
     opt_s = dict(zip(['nsilent', 'silent'], [nsilent_s, silent_s]))   
     pathway_corr_df = pd.DataFrame(index=path_df.columns)
     for opt, s in opt_s.iteritems():
-        score_df = path.score_pathways(path_df, mut_df, data_type='mut', opt=opt)
+        score_df = pathway.score_pathways(path_df, mut_df, data_type='mut', opt=opt)
         score_df.to_csv(results_dir + os.sep + opt +'_pathway_score.txt', index=True, index_label='Pathway', sep='\t')
         print("\t Wrote " + opt +'_pathway_score.txt %d x %d' %sscore_df.shape )
         for p in score_df.index:
