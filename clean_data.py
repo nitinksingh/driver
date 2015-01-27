@@ -73,8 +73,9 @@ def categorize_samples(df, filename, dest_dir, prefix=''):
 
     sample_type = pd.Series([int(x.split('-')[3][:2]) for x in headers])
     summary = sample_type.value_counts().sort_index()
-    print("type\tcount")
-    pd_print_full(summary)
+    print("TSS Code \t Sample Count")
+    for i in summary.index:
+        print("%d \t\t %d\n" %(i, summary.loc[i]))
 
     primary_tumors = []; normals = []
     for s in headers:
@@ -108,9 +109,25 @@ def categorize_samples(df, filename, dest_dir, prefix=''):
 
 
 def preprocess_clinical_data(filename, dest_dir):
-    df = read_matrix_format_data(filename, 0, header=15, skiprows=[0])
+    df = pd.read_table(filename,  index_col=0, header=0)
+
+    df.columns = df.loc['patient.bcr_patient_barcode']
+    df.columns = [x.upper() for x in df.columns]
+    df.dropna(axis=(0, 1), how='all', inplace=True)
+    df.insert(0, 'patient_info', df.index)
+    
+
+    # Drop extra rows
+    df = df.loc[~ df['patient_info'].str.contains('^patient.drugs.drug')]
+    df = df.loc[~ df['patient_info'].str.contains('^admin.')]
+    df = df.loc[~ df['patient_info'].str.contains('^patient.radiations.')]
+    df = df.loc[~ df['patient_info'].str.contains('^patient.bcr')]
+   
+
+
     save_df(df, filename, dest_dir)
     
+
     return df
 
 def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
@@ -186,22 +203,36 @@ def preprocess_gdac_data():
         print('\n'+'*'*50)
         print(' '*20 +  c   + ' '*20)
         print('*'*50)
+        
+                # Clinical
+        clinical_tar = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
+                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
+                    '.Merge_Clinical.Level_1.2014120600.0.0.tar.gz'
+        clinical_file = c + '.merged_only_clinical_clin_format.txt'
+        print("-"*40)
+        print("\n\t Clinical")
+        print("-"*40)
+
+        extracted_clinical = tar_extract(clinical_tar, clinical_file, can_dir) 
+        df = preprocess_clinical_data(extracted_clinical, can_dir)
+        continue
         # Mutation
         mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
                     c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
                     '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
+        print("-"*40)
         print("\n\t MUTATION")
         print("-"*40)
         df = preprocess_mutation_data(mut_dir, can_dir, c)
         
-        continue
+        
         # CNA 
         cna_tar =   input_dir + os.sep + 'analyses__2014_10_17' + \
                     os.sep + c + os.sep + '20141017' + os.sep + GDAC_PREFIX + \
                     c + '-TP.CopyNumber_Gistic2.Level_4.2014101700.0.0.tar.gz'
         cna_file = 'all_thresholded.by_genes.txt'
                     
-        
+        print("-"*40)        
         print("\n\t CNA")
         print("-"*40)
 
@@ -215,25 +246,14 @@ def preprocess_gdac_data():
                     c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
                     '.mRNAseq_Preprocess.Level_3.2014120600.0.0.tar.gz'
         rnaseq_file = c + '.uncv2.mRNAseq_RSEM_normalized_log2.txt'
-
+        print("-"*40)
         print("\n\t mRNA-Seq")
         print("-"*40)
 
         extracted_rnaseq_file = tar_extract(rnaseq_tar, rnaseq_file, can_dir) 
         preprocess_rnaseq_data(extracted_rnaseq_file, can_dir)
 
-        continue 
-        # Clinical
-        clinical_tar = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
-                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
-                    '.Merge_Clinical.Level_1.2014120600.0.0.tar.gz'
-        clinical_file = c + '.clin.merged.txt'
-
-        print("\n\t Clinical")
-        print("-"*40)
-
-        extracted_clinical = tar_extract(clinical_tar, clinical_file, can_dir) 
-        df = preprocess_clinical_data(extracted_clinical, can_dir)
+         
         
 
 
