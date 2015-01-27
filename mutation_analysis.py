@@ -22,19 +22,16 @@ def generate_mutation_scores(can_type):
     
     # Load preprocessed mutation data    
     data_dir = '../data/processed/' + can_type 
-    mut_path = data_dir + os.sep + can_type + '_mutation.txt'
-    mut_df = pd.read_table(mut_path, index_col=0, header=0)
-
-    # Compute pathway score for silent and non-silent mutations
-    silent_s = mut_df.replace([-1, 0], [np.nan, np.nan]).count()
-    nsilent_s = mut_df.replace([1, 0], [np.nan, np.nan]).count()
-
-    opt_s = dict(zip(['nsilent', 'silent'], [nsilent_s, silent_s]))   
+    mut_categories = ['silent', 'nsilent']
     
-    for opt, s in opt_s.iteritems():
-        score_df = pathway.score_pathways(mut_df, data_type='mut', opt=opt)
-        score_df.to_csv(results_dir + os.sep + opt +'_pathway_score.txt', index=True, index_label='Pathway', sep='\t')
-        print("Wrote " + can_type + " " + opt +'_pathway_score.txt %d x %d' %score_df.shape )
+    for mut in mut_categories:
+        mut_path = data_dir + os.sep + can_type + '_' + mut + '_mutation.txt'
+        mut_df = pd.read_table(mut_path, index_col=0, header=0)
+    
+        score_df = pathway.score_pathways(mut_df, data_type='mut')
+        score_df.to_csv(results_dir + os.sep + mut +'_mutation_pathway_score.txt', index=True, index_label='Pathway', sep='\t')
+        print("Wrote " + can_type + " " + mut +'_mutation_pathway_score.txt %d x %d' %score_df.shape )
+
 
     
 def analyze_pathway_mutations(can_type, refresh=0):

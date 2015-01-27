@@ -167,14 +167,15 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
             
             if mut == 'silent':
                 # Substitute silent mutations: 1, non-silent: 0 (deleterious) 
-                sub_dict = dict.fromkeys(sdf['Variant_Classification'].unique(), 0)
+                sub_dict = dict.fromkeys(df['Variant_Classification'].unique(), 0)
                 sub_dict.update({'Silent':1})
                 # Drop duplicate mutations arising from the silent, non-silent categorization
                 df.replace(sub_dict.keys(), sub_dict.values(), inplace=True)
     
+            
             # Aggregate all mutations happend in the same gene
             df = df.groupby('Hugo_Symbol').sum()
-            df.set_index('Hugo_Symbol', drop=True, inplace=True)
+            
             if 'Unknown' in df.index:
                 unknown_count += df.loc["Unknown"].shape[0]
                 df.drop("Unknown", axis=0, inplace=True)

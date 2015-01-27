@@ -32,17 +32,8 @@ def score_pathways(data_df, data_type, opt=''):
 def scorer(df, data_type, opt):
     """ Call individual scoring functions that are specific to data type"""
     if data_type == 'mut':
-        if opt == 'silent':
-            silent = df.replace([-1, 0], [np.nan, np.nan]).count(axis=0)
-            ret_s = silent/df.shape[0]
-        elif opt == 'nsilent':
-            nsilent = df.replace([1, 0], [np.nan, np.nan]).count(axis=0)
-            ret_s = nsilent/df.shape[0]
-        elif opt == 'both':
-            both = df.replace([0], [np.nan]).count()
-            ret_s = both/df.shape[0]
-        else:
-            error('Unknown option %s in scorer' % opt)
+        sum_score = df.abs().sum(axis=0)
+        ret_s = sum_score/df.shape[0]
 
         return ret_s
         
