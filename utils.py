@@ -23,9 +23,12 @@ def error(*objs):
 
 # Write warning message to stderr
 def info(*objs):
-    print("INFO from function " + inspect.stack()[1][3] + ": ", *objs, file=sys.stderr)
+    print("INFO from function " + inspect.stack()[1][3] + ": ", *objs, file=sys.stdout)
 
-
+def makedirs(dir_name):
+    if not os.path.exists(dir_name):
+        os.makedirs(os.path.abspath(dir_name))
+    
 # A helper function that returns a file path name appended with "append" string
 def make_filename(orig_name, append='cleaned'):
     # Now save the cleaned data
