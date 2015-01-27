@@ -120,8 +120,9 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
     samples = [os.path.basename(f).split('.')[0] for f in mut_files]
     sample_type = pd.Series([int(x.split('-')[3][:2]) for x in samples])
     summary = sample_type.value_counts().sort_index()
-    print("type\tcount")
-    pd_print_full(summary)
+    print("TSS Code \t Sample Count")
+    for i in summary.index:
+        print("%d \t\t %d\n" %(i, summary.loc[i]))
 
     p = ['-'.join(x.split('-')[:3]) for x in samples]
     if len(set(p)) != len(p):
@@ -131,24 +132,34 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
         error('Non primary tumor samples?')
 
     joint_dict = {}
+    # Some info variables
+    unknown_count = 0; both_mut_count = 0;
     for f in mut_files:
         df = read_matrix_format_data(f, 0, usecols = [0, 8])
         # Substitute silent mutations: 1, non-silent: -1 (deleterious) 
         sub_dict = dict.fromkeys(df['Variant_Classification'].unique(), -1)
         sub_dict.update({'Silent':1})
         df.replace(sub_dict.keys(), sub_dict.values(), inplace=True)
+        # If there are multple same type of mutations in the same gene
         df.drop_duplicates(inplace=True)
         df.set_index('Hugo_Symbol', drop=True, inplace=True)
         if 'Unknown' in df.index:
+            unknown_count += df.loc["Unknown"].shape[0]
             df.drop("Unknown", axis=0, inplace=True)
         # Keep non-silent if a gene has both silent and non-silent mutations
-        df.loc[df.index.get_duplicates()] == -1
-
+        both_mut_genes = df.index.get_duplicates()
+        df.loc[both_mut_genes] == -1
+        df.drop_duplicates(inplace=True)
+        both_mut_count += len(both_mut_genes)
+        
         x = os.path.basename(f).split('.')[0] 
         df.columns = ['-'.join(x.split('-')[:3])]
         joint_dict.update(df.to_dict())        
         joint_df = pd.DataFrame.from_dict(joint_dict)
         
+    print("dropped 'Unknown' genes count: %d" %unknown_count)
+    print("Total incidence of both silent and non-silent mutations occuring in the same gene: %d" %both_mut_count)
+    print("Saving in: %s" %dest_dir)
     joint_df.insert(0, 'Gene_Symbol', joint_df.index)
     joint_df.fillna(0, inplace=True)    
     save_df(joint_df, 'mutation.txt', dest_dir, prefix+'_')
@@ -171,13 +182,18 @@ def preprocess_gdac_data():
         if not os.path.exists(can_dir):
             os.mkdir(can_dir)
 
+        print('\n'+'*'*50)
+        print(' '*20 +  c   + ' '*20)
+        print('*'*50)
         # Mutation
         mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
                     c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
                     '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
-        print("\nProcessing %s mutation" %c)
+        print("\n\t MUTATION")
+        print("-"*40)
         df = preprocess_mutation_data(mut_dir, can_dir, c)
         
+        continue
         # CNA 
         cna_tar =   input_dir + os.sep + 'analyses__2014_10_17' + \
                     os.sep + c + os.sep + '20141017' + os.sep + GDAC_PREFIX + \
@@ -185,7 +201,9 @@ def preprocess_gdac_data():
         cna_file = 'all_thresholded.by_genes.txt'
                     
         
-        print("\nProcessing %s CNA" %c)
+        print("\n\t CNA")
+        print("-"*40)
+
         extracted_cna_file = tar_extract(cna_tar, cna_file, can_dir) 
         preprocess_cna_data(extracted_cna_file, can_dir)
 
@@ -197,7 +215,9 @@ def preprocess_gdac_data():
                     '.mRNAseq_Preprocess.Level_3.2014120600.0.0.tar.gz'
         rnaseq_file = c + '.uncv2.mRNAseq_RSEM_normalized_log2.txt'
 
-        print("\n Processing %s RNA-Seq" %c)
+        print("\n\t mRNA-Seq")
+        print("-"*40)
+
         extracted_rnaseq_file = tar_extract(rnaseq_tar, rnaseq_file, can_dir) 
         preprocess_rnaseq_data(extracted_rnaseq_file, can_dir)
 
@@ -208,7 +228,9 @@ def preprocess_gdac_data():
                     '.Merge_Clinical.Level_1.2014120600.0.0.tar.gz'
         clinical_file = c + '.clin.merged.txt'
 
-        print("\n Processing %s Clincal" %c)
+        print("\n\t Clinical")
+        print("-"*40)
+
         extracted_clinical = tar_extract(clinical_tar, clinical_file, can_dir) 
         df = preprocess_clinical_data(extracted_clinical, can_dir)
         
