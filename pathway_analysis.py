@@ -8,7 +8,6 @@ Created on Sun Jan 18 16:27:20 2015
 Clean pathways from MSigDB
 """
 from __future__ import division
-import sys
 import os
 import pandas as pd
 import numpy as np
@@ -69,10 +68,6 @@ def preprocess_pathway_data():
         
     return df
 
+# Entry point, test code
 if __name__ == '__main__':
-    can_type = 'LUAD'    
-    data_dir = '../data/processed/' + can_type 
-    mut_path = data_dir + os.sep + can_type + '_mutation.txt'
-
-    path_df = preprocess_pathway_data()
-    
+    df = preprocess_pathway_data()

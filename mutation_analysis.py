@@ -32,9 +32,9 @@ def generate_mutation_scores(can_type):
     opt_s = dict(zip(['nsilent', 'silent'], [nsilent_s, silent_s]))   
     
     for opt, s in opt_s.iteritems():
-        score_df = pathway.score_pathways(path_df, mut_df, data_type='mut', opt=opt)
+        score_df = pathway.score_pathways(mut_df, data_type='mut', opt=opt)
         score_df.to_csv(results_dir + os.sep + opt +'_pathway_score.txt', index=True, index_label='Pathway', sep='\t')
-        print("\t Wrote " + opt +'_pathway_score.txt %d x %d' %sscore_df.shape )
+        print("Wrote " + can_type + " " + opt +'_pathway_score.txt %d x %d' %score_df.shape )
 
     
 def analyze_pathway_mutations(can_type, refresh=0):
@@ -86,6 +86,7 @@ if __name__ == '__main__':
     """ Gen pathway mutation correlation with non-silent mutation counts"""
     can_type = ['LUAD', 'LUSC']
     for can in can_type:
-        df = analyze_pathway_mutations(can, 1)
+        df = generate_mutation_scores(can)
+        #analyze_pathway_mutations(can, 0)
 
     

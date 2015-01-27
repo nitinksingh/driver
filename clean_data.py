@@ -139,17 +139,18 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
         # Substitute silent mutations: 1, non-silent: -1 (deleterious) 
         sub_dict = dict.fromkeys(df['Variant_Classification'].unique(), -1)
         sub_dict.update({'Silent':1})
+        # Drop duplicate mutations arising from the silent, non-silent categorization
         df.replace(sub_dict.keys(), sub_dict.values(), inplace=True)
-        # If there are multple same type of mutations in the same gene
         df.drop_duplicates(inplace=True)
         df.set_index('Hugo_Symbol', drop=True, inplace=True)
         if 'Unknown' in df.index:
             unknown_count += df.loc["Unknown"].shape[0]
             df.drop("Unknown", axis=0, inplace=True)
-        # Keep non-silent if a gene has both silent and non-silent mutations
+
+        # If there are multple mutations in the same gene keep the non-silent
+        # one. This relies on to_dict method actually
         both_mut_genes = df.index.get_duplicates()
         df.loc[both_mut_genes] == -1
-        df.drop_duplicates(inplace=True)
         both_mut_count += len(both_mut_genes)
         
         x = os.path.basename(f).split('.')[0] 
