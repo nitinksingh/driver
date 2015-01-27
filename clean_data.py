@@ -148,39 +148,47 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
     if any([0 if x ==1 else 0  for x in sample_type]):
         error('Non primary tumor samples?')
 
-    joint_dict = {}
-    # Some info variables
-    unknown_count = 0; both_mut_count = 0;
-    for f in mut_files:
-        df = read_matrix_format_data(f, 0, usecols = [0, 8])
-        # Substitute silent mutations: 1, non-silent: -1 (deleterious) 
-        sub_dict = dict.fromkeys(df['Variant_Classification'].unique(), -1)
-        sub_dict.update({'Silent':1})
-        # Drop duplicate mutations arising from the silent, non-silent categorization
-        df.replace(sub_dict.keys(), sub_dict.values(), inplace=True)
-        df.drop_duplicates(inplace=True)
-        df.set_index('Hugo_Symbol', drop=True, inplace=True)
-        if 'Unknown' in df.index:
-            unknown_count += df.loc["Unknown"].shape[0]
-            df.drop("Unknown", axis=0, inplace=True)
+    mut_categories = ['silent', 'nsilent']
 
-        # If there are multple mutations in the same gene keep the non-silent
-        # one. This relies on to_dict method actually
-        both_mut_genes = df.index.get_duplicates()
-        df.loc[both_mut_genes] == -1
-        both_mut_count += len(both_mut_genes)
+    # Some info variables
+    unknown_count = 0
+    for mut in mut_categories:
+        joint_dict = {}
+        for f in mut_files:
+            # Non-silent df, and silent df
+            df = read_matrix_format_data(f, 0, usecols = [0, 8])
+            
+            if mut == 'nsilent':
+                # Substitute silent mutations: 0, non-silent: -1 (deleterious) 
+                sub_dict = dict.fromkeys(df['Variant_Classification'].unique(), -1)
+                sub_dict.update({'Silent':0})
+                # Drop duplicate mutations arising from the silent, non-silent categorization
+                df.replace(sub_dict.keys(), sub_dict.values(), inplace=True)
+            
+            if mut == 'silent':
+                # Substitute silent mutations: 1, non-silent: 0 (deleterious) 
+                sub_dict = dict.fromkeys(sdf['Variant_Classification'].unique(), 0)
+                sub_dict.update({'Silent':1})
+                # Drop duplicate mutations arising from the silent, non-silent categorization
+                df.replace(sub_dict.keys(), sub_dict.values(), inplace=True)
+    
+            # Aggregate all mutations happend in the same gene
+            df = df.groupby('Hugo_Symbol').sum()
+            df.set_index('Hugo_Symbol', drop=True, inplace=True)
+            if 'Unknown' in df.index:
+                unknown_count += df.loc["Unknown"].shape[0]
+                df.drop("Unknown", axis=0, inplace=True)
+    
+            x = os.path.basename(f).split('.')[0] 
+            df.columns = ['-'.join(x.split('-')[:3])]
+            joint_dict.update(df.to_dict())        
+            joint_df = pd.DataFrame.from_dict(joint_dict)
         
-        x = os.path.basename(f).split('.')[0] 
-        df.columns = ['-'.join(x.split('-')[:3])]
-        joint_dict.update(df.to_dict())        
-        joint_df = pd.DataFrame.from_dict(joint_dict)
-        
-    print("dropped 'Unknown' genes count: %d" %unknown_count)
-    print("Total incidence of both silent and non-silent mutations occuring in the same gene: %d" %both_mut_count)
-    print("Saving in: %s" %dest_dir)
-    joint_df.insert(0, 'Gene_Symbol', joint_df.index)
-    joint_df.fillna(0, inplace=True)    
-    save_df(joint_df, 'mutation.txt', dest_dir, prefix+'_')
+        print("dropped 'Unknown' genes count: %d" %unknown_count)
+        print("Saving in: %s" %dest_dir)
+        joint_df.insert(0, 'Gene_Symbol', joint_df.index)
+        joint_df.fillna(0, inplace=True)    
+        save_df(joint_df, 'mutation.txt', dest_dir, prefix+'_' + mut + '_')
     
     return joint_df
     
@@ -204,7 +212,18 @@ def preprocess_gdac_data():
         print(' '*20 +  c   + ' '*20)
         print('*'*50)
         
-                # Clinical
+        # Mutation
+        mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
+                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
+                    '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
+        print("-"*40)
+        print("\n\t MUTATION")
+        print("-"*40)
+        df = preprocess_mutation_data(mut_dir, can_dir, c)
+        
+        continue
+        
+        # Clinical
         clinical_tar = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
                     c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
                     '.Merge_Clinical.Level_1.2014120600.0.0.tar.gz'
@@ -215,16 +234,6 @@ def preprocess_gdac_data():
 
         extracted_clinical = tar_extract(clinical_tar, clinical_file, can_dir) 
         df = preprocess_clinical_data(extracted_clinical, can_dir)
-        continue
-        # Mutation
-        mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
-                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
-                    '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
-        print("-"*40)
-        print("\n\t MUTATION")
-        print("-"*40)
-        df = preprocess_mutation_data(mut_dir, can_dir, c)
-        
         
         # CNA 
         cna_tar =   input_dir + os.sep + 'analyses__2014_10_17' + \
