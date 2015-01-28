@@ -187,6 +187,7 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
         
         print("dropped 'Unknown' genes count: %d" %unknown_count)
         print("Saving in: %s" %dest_dir)
+        print joint_df.shape
         joint_df.insert(0, 'Gene_Symbol', joint_df.index)
         joint_df.fillna(0, inplace=True)    
         save_df(joint_df, 'mutation.txt', dest_dir, prefix+'_' + mut + '_')
@@ -197,7 +198,11 @@ def preprocess_gdac_data():
     """ Gather filenames for GDAC downloaded TCGA data """
     input_dir = '../data'
     output_dir = input_dir + os.sep + 'processed'
-    CANCER_TYPES = ['LUAD', 'LUSC']
+    
+    cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PANCANCER PANCAN8 PCPG PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
+    CANCER_TYPES = cohort.split(" ")
+
+#    CANCER_TYPES = ['LUAD', 'LUSC']
     GDAC_PREFIX = 'gdac.broadinstitute.org_'
 
     if not os.path.exists(output_dir):
@@ -217,6 +222,12 @@ def preprocess_gdac_data():
         mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
                     c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
                     '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
+        
+        if not os.path.exists(mut_dir + '.tar.gz'):
+            continue
+        
+        tar_extract(mut_dir + '.tar.gz', os.path.dirname(mut_dir))
+        
         print("-"*40)
         print("\n\t MUTATION")
         print("-"*40)
@@ -267,19 +278,19 @@ def preprocess_gdac_data():
         
 
 
-def tar_extract(tf, filename, dest_dir):
-    extratced_file= tf.split('.tar.gz')[0] + os.sep + filename
-    
-    if os.path.exists(extratced_file):
-        #print("The file %s is already extracted" %extratced_file)
-        return extratced_file
+def tar_extract(tf, dest_dir):
+#    extratced_file= tf.split('.tar.gz')[0] + os.sep + filename
+#    
+#    if os.path.exists(extratced_file):
+#        #print("The file %s is already extracted" %extratced_file)
+#        return extratced_file
         
     if os.path.exists(tf):
-        tarfile.open(tf, 'r').extract(fullname, dest_dir)
+        tarfile.open(tf, 'r').extractall(dest_dir)
     else:
         error('Tar %s not found' %(tf))
     
-    return extratced_file
+#    return extratced_file
 
 
 # Program entry point    
