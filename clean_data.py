@@ -143,13 +143,23 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
     # Process only primary tumors
     mut_files = []
     primary_samples = []
+    
+    cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
+    tss_code = dict.fromkeys(cohort.split(), 1)
+    tss_code.update({'LAML': 3})
+    
+    
     for f in all_mut_files:
         x = int(os.path.basename(f).split('.')[0].split('-')[3][:2])
         y = '-'.join(os.path.basename(f).split('.')[0].split('-')[:3])
-        if x == 1:
+        if x == tss_code[prefix]:
             mut_files.append(f)
             primary_samples.append(y)
 
+    if not len(primary_samples):
+        print("No sample avail for processing %s" %prefix)
+        return
+        
     p = pd.Series(primary_samples).value_counts().sort_index()
     if len(set(primary_samples)) != len(primary_samples):
             error('Duplicate samples?,  total: %d, uniq: %d' %(len(p), len(set(p))))
@@ -199,7 +209,6 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
         save_df(joint_df, 'mutation.txt', dest_dir, prefix+'_' + mut + '_')
         del(joint_df)
     
-    return joint_df
     
 def preprocess_gdac_data():
     """ Gather filenames for GDAC downloaded TCGA data """
@@ -207,7 +216,7 @@ def preprocess_gdac_data():
     output_dir = input_dir + os.sep + 'processed'
     
     cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
-    CANCER_TYPES = cohort.split(" ")[3:]
+    CANCER_TYPES = cohort.split(" ")[16:]
 
     GDAC_PREFIX = 'gdac.broadinstitute.org_'
 
@@ -230,6 +239,7 @@ def preprocess_gdac_data():
                     '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
         
         if not os.path.exists(mut_dir + '.tar.gz'):
+            print('Tar download is missing. Skipping %s' %c)
             continue
         
         tar_extract(mut_dir + '.tar.gz', os.path.dirname(mut_dir))
@@ -237,7 +247,7 @@ def preprocess_gdac_data():
         print("-"*40)
         print("\n\t MUTATION")
         print("-"*40)
-        df = preprocess_mutation_data(mut_dir, can_dir, c)
+        preprocess_mutation_data(mut_dir, can_dir, c)
         
         continue
         
