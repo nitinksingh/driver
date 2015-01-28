@@ -132,21 +132,27 @@ def preprocess_clinical_data(filename, dest_dir):
 
 def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
     mut_dir += os.sep + '*.maf.txt'
-    mut_files = glob.glob(mut_dir)
+    all_mut_files = glob.glob(mut_dir)
 
-    samples = [os.path.basename(f).split('.')[0] for f in mut_files]
-    sample_type = pd.Series([int(x.split('-')[3][:2]) for x in samples])
-    summary = sample_type.value_counts().sort_index()
+    samples = [os.path.basename(f).split('.')[0] for f in all_mut_files]
+    sample_type = [int(x.split('-')[3][:2]) for x in samples]
+    summary = pd.Series(sample_type).value_counts().sort_index()
     print("TSS Code \t Sample Count")
     for i in summary.index:
         print("%d \t\t %d\n" %(i, summary.loc[i]))
+    # Process only primary tumors
+    mut_files = []
+    primary_samples = []
+    for f in all_mut_files:
+        x = int(os.path.basename(f).split('.')[0].split('-')[3][:2])
+        y = '-'.join(os.path.basename(f).split('.')[0].split('-')[:3])
+        if x == 1:
+            mut_files.append(f)
+            primary_samples.append(y)
 
-    p = ['-'.join(x.split('-')[:3]) for x in samples]
-    if len(set(p)) != len(p):
+    p = pd.Series(primary_samples).value_counts().sort_index()
+    if len(set(primary_samples)) != len(primary_samples):
             error('Duplicate samples?,  total: %d, uniq: %d' %(len(p), len(set(p))))
-
-    if any([0 if x ==1 else 0  for x in sample_type]):
-        error('Non primary tumor samples?')
 
     mut_categories = ['silent', 'nsilent']
 
@@ -154,7 +160,7 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
     unknown_count = 0
     for mut in mut_categories:
         joint_dict = {}
-        for f in mut_files:
+        for i, f in enumerate(mut_files):
             # Non-silent df, and silent df
             df = read_matrix_format_data(f, 0, usecols = [0, 8])
             
@@ -191,6 +197,7 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
         joint_df.insert(0, 'Gene_Symbol', joint_df.index)
         joint_df.fillna(0, inplace=True)    
         save_df(joint_df, 'mutation.txt', dest_dir, prefix+'_' + mut + '_')
+        del(joint_df)
     
     return joint_df
     
@@ -199,10 +206,9 @@ def preprocess_gdac_data():
     input_dir = '../data'
     output_dir = input_dir + os.sep + 'processed'
     
-    cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PANCANCER PANCAN8 PCPG PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
-    CANCER_TYPES = cohort.split(" ")
+    cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
+    CANCER_TYPES = cohort.split(" ")[3:]
 
-#    CANCER_TYPES = ['LUAD', 'LUSC']
     GDAC_PREFIX = 'gdac.broadinstitute.org_'
 
     if not os.path.exists(output_dir):
