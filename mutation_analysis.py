@@ -26,6 +26,10 @@ def generate_mutation_scores(can_type):
     
     for mut in mut_categories:
         mut_path = data_dir + os.sep + can_type + '_' + mut + '_mutation.txt'
+        if not os.path.exists(mut_path):
+            print("processed mutation data is not found: %s" %can_type)
+            return
+            
         mut_df = pd.read_table(mut_path, index_col=0, header=0)
     
         score_df = pathway.score_pathways(mut_df, data_type='mut')
@@ -81,7 +85,9 @@ def analyze_pathway_mutations(can_type, refresh=0):
 if __name__ == '__main__':
     
     """ Gen pathway mutation correlation with non-silent mutation counts"""
-    can_type = ['LUAD', 'LUSC']
+    cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
+    can_type = cohort.split()
+    
     for can in can_type:
         df = generate_mutation_scores(can)
         #analyze_pathway_mutations(can, 0)

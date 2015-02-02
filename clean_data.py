@@ -216,7 +216,7 @@ def preprocess_gdac_data():
     output_dir = input_dir + os.sep + 'processed'
     
     cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
-    CANCER_TYPES = cohort.split(" ")[16:]
+    CANCER_TYPES = cohort.split(" ")
 
     GDAC_PREFIX = 'gdac.broadinstitute.org_'
 
