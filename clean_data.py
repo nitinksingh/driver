@@ -107,7 +107,7 @@ def categorize_samples(df, filename, dest_dir, prefix=''):
 
     return
 
-
+total_samples = 0
 def preprocess_clinical_data(filename, dest_dir):
     df = pd.read_table(filename,  index_col=0, header=0)
 
@@ -116,18 +116,25 @@ def preprocess_clinical_data(filename, dest_dir):
     df.dropna(axis=(0, 1), how='all', inplace=True)
     df.insert(0, 'patient_info', df.index)
     
+    params = ['patient.days_to_death','patient.days_to_last_followup']
+    params += ['patient.days_to_birth']
+    params += ['patient.vital_status', 'patient.gender']    
+    params += ['patient.prior_dx', 'patient.race', 'patient.radiation_therapy']
+    params += ['patient.primary_therapy_outcome_success', 'patient.primary_pathology.histological_type']
 
+    df = df.loc[params]
     # Drop extra rows
-    df = df.loc[~ df['patient_info'].str.contains('^patient.drugs.drug')]
-    df = df.loc[~ df['patient_info'].str.contains('^admin.')]
-    df = df.loc[~ df['patient_info'].str.contains('^patient.radiations.')]
-    df = df.loc[~ df['patient_info'].str.contains('^patient.bcr')]
+#    df = df.loc[~ df['patient_info'].str.contains('^patient.drugs.drug')]
+#    df = df.loc[~ df['patient_info'].str.contains('^admin.')]
+#    df = df.loc[~ df['patient_info'].str.contains('^patient.radiations.')]
+#    df = df.loc[~ df['patient_info'].str.contains('^patient.bcr')]
    
-
-
-    save_df(df, filename, dest_dir)
+    clinical_of = dest_dir + os.sep + os.path.basename(dest_dir) + '_clinical.csv'
+    df.to_csv(clinical_of, index=False, sep='\t') 
+    print("Wrote %s %d x %d matrix" %(os.path.basename(clinical_of), len(df.index), len(df.columns)))  
     
-
+    global total_samples
+    total_samples += len(df.columns)
     return df
 
 def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
@@ -233,35 +240,25 @@ def preprocess_gdac_data():
         print(' '*20 +  c   + ' '*20)
         print('*'*50)
         
-        # Mutation
-        mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
-                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
-                    '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
-        
-        if not os.path.exists(mut_dir + '.tar.gz'):
-            print('Tar download is missing. Skipping %s' %c)
-            continue
-        
-        tar_extract(mut_dir + '.tar.gz', os.path.dirname(mut_dir))
-        
-        print("-"*40)
-        print("\n\t MUTATION")
-        print("-"*40)
-        preprocess_mutation_data(mut_dir, can_dir, c)
-        
-        continue
         
         # Clinical
-        clinical_tar = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
+        clinical_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
                     c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
-                    '.Merge_Clinical.Level_1.2014120600.0.0.tar.gz'
-        clinical_file = c + '.merged_only_clinical_clin_format.txt'
+                    '.Merge_Clinical.Level_1.2014120600.0.0'
+        clinical_file = clinical_dir + os.sep + c + '.merged_only_clinical_clin_format.txt'
+        
         print("-"*40)
         print("\n\t Clinical")
         print("-"*40)
 
-        extracted_clinical = tar_extract(clinical_tar, clinical_file, can_dir) 
-        df = preprocess_clinical_data(extracted_clinical, can_dir)
+        if not os.path.exists(clinical_dir + '.tar.gz'):
+            print('Tar download is missing. Skipping %s' %c)
+            continue
+        
+        tar_extract(clinical_dir + '.tar.gz', os.path.dirname(clinical_dir))
+        preprocess_clinical_data(clinical_file, can_dir)
+        
+        continue
         
         # CNA 
         cna_tar =   input_dir + os.sep + 'analyses__2014_10_17' + \
@@ -290,7 +287,23 @@ def preprocess_gdac_data():
         extracted_rnaseq_file = tar_extract(rnaseq_tar, rnaseq_file, can_dir) 
         preprocess_rnaseq_data(extracted_rnaseq_file, can_dir)
 
-         
+        continue
+        
+        # Mutation
+        mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
+                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
+                    '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
+        
+        if not os.path.exists(mut_dir + '.tar.gz'):
+            print('Tar download is missing. Skipping %s' %c)
+            continue
+        
+        tar_extract(mut_dir + '.tar.gz', os.path.dirname(mut_dir))
+        
+        print("-"*40)
+        print("\n\t MUTATION")
+        print("-"*40)
+        preprocess_mutation_data(mut_dir, can_dir, c) 
         
 
 
@@ -312,3 +325,4 @@ def tar_extract(tf, dest_dir):
 # Program entry point    
 if __name__ == "__main__":
     df = preprocess_gdac_data()    
+    print total_samples
