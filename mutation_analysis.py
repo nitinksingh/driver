@@ -38,6 +38,43 @@ def generate_mutation_scores(can_type):
 
     
 
+def get_pancancer_mutation_summary(agg_axis=0):
+    """ Summarize mutation data across cancer types. 
+    Parameters
+    -----------------
+    agg_axis: 0 Aggregate across genes for each sample.
+    agg_axis: 1 Aggregate across samples for each GENE.    
+    """
+    cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
+    ns_summary = pd.DataFrame()
+    s_summary = pd.DataFrame()
+    for can in cohort.split():
+        f1 = '../data/processed/' + can + os.sep + can + '_nsilent_mutation.txt'
+        f2 = '../data/processed/' + can + os.sep + can + '_silent_mutation.txt'
+        if not os.path.exists(f1) or not os.path.exists(f2):
+            #print("Skipping %s " %can)
+            continue
+
+        nsdf = pd.read_table(f1, header=0, index_col=0)
+        nsilent = nsdf.replace([0], [np.nan]).count(axis=agg_axis)
+
+        sdf = pd.read_table(f2, header=0, index_col=0)
+        silent = sdf.replace([0], [np.nan]).count(axis=agg_axis)
+
+        if agg_axis == 1:
+            silent = silent/sdf.shape[1]
+            nsilent = nsilent/nsdf.shape[1]
+        
+        if ns_summary.empty:
+            ns_summary[can] = nsilent
+            s_summary[can] = silent
+        else:
+            ns_summary = ns_summary.join(pd.Series(nsilent, name=can), how='outer')
+            s_summary = s_summary.join(pd.Series(silent, name=can), how='outer')
+
+            
+    return (ns_summary, s_summary)
+
 if __name__ == '__main__':
     
     """ Gen pathway mutation correlation with non-silent mutation counts"""
