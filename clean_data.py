@@ -241,15 +241,34 @@ def preprocess_gdac_data():
         print('*'*50)
         
         
+        # Mutation
+        print("-"*40)
+        print("\n\t MUTATION")
+        print("-"*40)
+
+        mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
+                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
+                    '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
+        
+        if not os.path.exists(mut_dir + '.tar.gz'):
+            print('Tar download is missing. Skipping %s' %c)
+            continue
+        
+        tar_extract(mut_dir + '.tar.gz', os.path.dirname(mut_dir))
+        
+        preprocess_mutation_data(mut_dir, can_dir, c) 
+
+
         # Clinical
+        print("-"*40)
+        print("\n\t Clinical")
+        print("-"*40)
+
         clinical_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
                     c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
                     '.Merge_Clinical.Level_1.2014120600.0.0'
         clinical_file = clinical_dir + os.sep + c + '.merged_only_clinical_clin_format.txt'
         
-        print("-"*40)
-        print("\n\t Clinical")
-        print("-"*40)
 
         if not os.path.exists(clinical_dir + '.tar.gz'):
             print('Tar download is missing. Skipping %s' %c)
@@ -289,21 +308,6 @@ def preprocess_gdac_data():
 
         continue
         
-        # Mutation
-        mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
-                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
-                    '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
-        
-        if not os.path.exists(mut_dir + '.tar.gz'):
-            print('Tar download is missing. Skipping %s' %c)
-            continue
-        
-        tar_extract(mut_dir + '.tar.gz', os.path.dirname(mut_dir))
-        
-        print("-"*40)
-        print("\n\t MUTATION")
-        print("-"*40)
-        preprocess_mutation_data(mut_dir, can_dir, c) 
         
 
 
