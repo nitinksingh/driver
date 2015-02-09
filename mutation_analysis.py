@@ -109,5 +109,6 @@ if __name__ == '__main__':
     for can in can_type:
         #df = generate_mutation_scores(can)
         #analyze_pathway_mutations(can, 0)
+        continue
 
     
