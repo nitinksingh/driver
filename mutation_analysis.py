@@ -54,8 +54,8 @@ def get_pancancer_mutation_summary(agg_axis=0, refresh=False):
         s_outf = outdir + os.sep + 'silent_mutations_samples.txt'
     
     if os.path.exists(ns_outf) and not refresh:
-        ns_summary = pd.read_table(ns_outf, sep='\t', index=0, header=0)
-        s_summary = pd.read_table(s_outf, sep='\t', index=0, header=0)
+        ns_summary = pd.read_table(ns_outf, sep='\t', index_col=0, header=0)
+        s_summary = pd.read_table(s_outf, sep='\t', index_col=0, header=0)
         
         return (ns_summary, s_summary)
         
