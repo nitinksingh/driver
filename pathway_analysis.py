@@ -22,10 +22,14 @@ def score_pathways(data_df, data_type, opt=''):
     path_df = preprocess_pathway_data()
     score_df = pd.DataFrame(index=path_df.columns, columns=data_df.columns)
     for p in path_df.columns:
-        # Get the genes that are present in data_df (gexp/cna/mut)
-        p_df = data_df.loc[path_df[p].dropna()]
-        score_s = scorer(p_df, data_type, opt)
-        score_df.loc[p] = score_s
+        try:
+            # Get the genes that are present in data_df (gexp/cna/mut)
+            avail_genes = filter(lambda x: x in data_df.index, path_df[p].dropna())
+            p_df = data_df.loc[avail_genes]
+            score_s = scorer(p_df, data_type, opt)
+            score_df.loc[p] = score_s
+        except KeyError:
+            error()
 
     return score_df
         

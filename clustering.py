@@ -2,7 +2,7 @@
 """
 Created on Sun Feb  8 13:21:37 2015
 
-@author: nitin
+@author: Nitin Singh
 """
 from __future__ import division
 import os
