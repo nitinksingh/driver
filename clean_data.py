@@ -215,7 +215,9 @@ def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
         joint_df.fillna(0, inplace=True)    
         save_df(joint_df, 'mutation.txt', dest_dir, prefix+'_' + mut + '_')
         del(joint_df)
-    
+
+def process_mutation_data_mutsig(mut_file, dest_dir, can):
+    pass
     
 def preprocess_gdac_data():
     """ Gather filenames for GDAC downloaded TCGA data """
@@ -246,17 +248,36 @@ def preprocess_gdac_data():
         print("\n\t MUTATION")
         print("-"*40)
 
-        mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
-                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
-                    '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
-        
-        if not os.path.exists(mut_dir + '.tar.gz'):
-            print('Tar download is missing. Skipping %s' %c)
-            continue
-        
-        tar_extract(mut_dir + '.tar.gz', os.path.dirname(mut_dir))
-        
-        preprocess_mutation_data(mut_dir, can_dir, c) 
+        mut_dir = input_dir + os.sep + 'analyses__2014_10_17' + \
+                 os.sep + c + os.sep + '20141017' + os.sep + \
+                 'MutSigNozzleReportCV' + os.sep
+        if c == 'LAML':
+            mut_file = mut_dir  + c + '-TB.final_analysis_set.maf'
+        elif c == 'SKCM':
+            mut_file = mut_dir  + c + '-TM.final_analysis_set.maf'
+        else:
+            mut_file = mut_dir  + c + '-TP.final_analysis_set.maf'
+       
+        process_mutation_data_mutsig(mut_file, can_dir, c)
+        print mut_file; error()
+        continue
+#        mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
+#                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
+#                    '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
+#        
+#        # Tar was extracted in some previos run
+#        if os.path.exists(mut_dir):
+#            preprocess_mutation_data(mut_dir, can_dir, c)
+#            continue
+#        
+#        if not os.path.exists(mut_dir + '.tar.gz'):
+#            print('Tar download is missing. Skipping %s' %c)
+#            continue
+#        
+#            
+#        tar_extract(mut_dir + '.tar.gz', os.path.dirname(mut_dir))
+#        
+#        preprocess_mutation_data(mut_dir, can_dir, c) 
 
 
         # Clinical

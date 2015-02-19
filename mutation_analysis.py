@@ -22,6 +22,8 @@ def generate_mutation_scores(can_type):
     data_dir = '../data/processed/' + can_type 
     mut_categories = ['silent', 'nsilent']
     
+    path_df = pathway.preprocess_pathway_data()
+    
     for mut in mut_categories:
         mut_path = data_dir + os.sep + can_type + '_' + mut + '_mutation.txt'
         if not os.path.exists(mut_path):
@@ -30,7 +32,7 @@ def generate_mutation_scores(can_type):
             
         mut_df = pd.read_table(mut_path, index_col=0, header=0)
         print can_type, mut_df.shape
-        score_df = pathway.score_pathways(mut_df, data_type='mut')
+        score_df = pathway.score_pathways(path_df, mut_df, data_type='mut')
         score_df.dropna(how='all', inplace=True)
         score_df.to_csv(results_dir + os.sep + mut +'_mutation_pathway_score.txt', index=True, index_label='Pathway', sep='\t')
         print("Wrote " + can_type + " " + mut +'_mutation_pathway_score.txt %d x %d' %score_df.shape )
@@ -108,8 +110,7 @@ if __name__ == '__main__':
     can_type = cohort.split()
     
     for can in can_type:
-        df = generate_mutation_scores(can)
-        #analyze_pathway_mutations(can, 0)
-        continue
+        generate_mutation_scores(can)        
+        
 
     
