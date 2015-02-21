@@ -89,4 +89,4 @@ def save_df(df, filename, dest_dir='', prefix=''):
     of_matrix = dest_dir + os.sep + prefix + os.path.basename(input_fpath) 
     
     df.to_csv(of_matrix, index=False, sep='\t') 
-    print("Wrote %s %d x %d matrix" %(os.path.basename(of_matrix), len(df.index), len(df.columns)))   
+    print("Wrote %s %d x %d matrix" %(os.path.basename(of_matrix), len(df.index)+1, len(df.columns)))   

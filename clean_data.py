@@ -9,103 +9,102 @@ Utility functions to read and load Firehose/GDAC pre-processed TCGA data
 from __future__ import division
 import sys
 import os
-from utils import *
+from utils import error, save_df
 import pandas as pd
 import tarfile
 import glob
 
 
-def read_matrix_format_data(filename, keycol=0, **read_table_args):
-    """ This is a generic function that reads data from a file which is in matrix
-    format. Returns pandas dataframe. Common arguments: index_col, names, 
-    skip_rows, na_values, usecols, delimiter
-    """
-    input_fpath = os.path.abspath(filename)
-    # Read data into a data frame. First row is header, pass caller functions
-    # arguments. This argument will typically tell which columns to select ie.
-    # "usecols" and rows to skip "skiprows".
-    if not read_table_args:
-        read_table_args = {'header': 0}
-
-    if 'header' not in read_table_args:
-        read_table_args['header'] = 0
-
-    try:
-        df = pd.read_table(input_fpath, sep='\t', **read_table_args)
-    except:
-        print "Unable to read input file: ", filename
-        error()
-
-    # Drop if key column is missing i.e first column has NaN in the data frame
-    df = df.dropna(subset = [df.columns[keycol]])
-    
-    return df
-
-    
-def preprocess_cna_data(filename, dest_dir):
-    """ Load data, drop chromosome and cytoband columns and check if there are 
-    samples other than primary tumor type.
-    """
-    df = read_matrix_format_data(filename)    
-    # drop locus id and cytoband columns
-    df.drop(df.columns[[1, 2]], axis=1, inplace=True)
-    df = df.rename(columns = {'Gene Symbol':'Gene_Symbol'})
-    categorize_samples(df, filename, dest_dir, prefix='CNA_')
+COHORTS = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
+COHORTS = "ACC LUAD LUSC"
+CANCER_TYPES = COHORTS.split()
+TSS_CODE = dict.fromkeys(CANCER_TYPES, 1)
+TSS_CODE.update({'LAML': 3, 'SKCM': 6})
+TSS_SYM = {1:'TP', 3:'TB', 6:'TM'}
+GDAC_PREFIX = 'gdac.broadinstitute.org_'
 
 
-def preprocess_rnaseq_data(filename, dest_dir):
-    """ Load data fix Gene Id and Symbol mix-up column, drop genes with '?' 
-    symbols and check if there are samples other than primary tumor type.
-    """
-    df = read_matrix_format_data(filename)
-    gene_sym = [gid_sym.split('|')[0] for gid_sym in df['gene']]
-    df['gene'] = gene_sym
-    print "rna seq", df.shape
-    df = df[df.gene != '?']
-    df = df.rename(columns = {'gene':'Gene_Symbol'})
-    
-    categorize_samples(df, filename, dest_dir, prefix='')
+def _summarize_sample_types(cols):
+    sample_type = [int(c.split('-')[3][:2]) for c in cols]
+    summary = pd.Series(sample_type)
 
-def categorize_samples(df, filename, dest_dir, prefix=''):
-    """ Check for duplicates, normal samples and then shorten TCGA id """
-    headers = df.columns[1:]
-    samples = ['-'.join(x.split('-')[:3]) for x in headers] 
+    summary = summary.value_counts().sort_index()
 
-    sample_type = pd.Series([int(x.split('-')[3][:2]) for x in headers])
-    summary = sample_type.value_counts().sort_index()
     print("TSS Code \t Sample Count")
     for i in summary.index:
         print("%d \t\t %d\n" %(i, summary.loc[i]))
 
+
+
+def preprocess_cna_data(filename, dest_dir, can):
+    """ Load data, drop chromosome and cytoband columns and check if there are 
+    samples other than primary tumor type.
+    """
+    df = pd.read_table(filename, header=0)
+    print "Raw CNA shape", df.shape
+    # drop locus id and cytoband columns
+    df.drop(df.columns[[1, 2]], axis=1, inplace=True)
+    df = df.rename(columns = {'Gene Symbol':'Gene_Symbol'})
+    pt_df, nb_df = categorize_samples(df, can)
+    
+    if type(pt_df) != int:
+        save_df(pt_df, 'cna.txt', dest_dir, can+'_PT_')
+    if type(nb_df) != int:
+        save_df(nb_df, 'cna.txt', dest_dir, can+'_NB_')
+
+def preprocess_rnaseq_data(filename, dest_dir, can):
+    """ Load data fix Gene Id and Symbol mix-up column, drop genes with '?' 
+    symbols and check if there are samples other than primary tumor type.
+    """
+    df = pd.read_table(filename, header=0)
+    df.columns = ['Gene_Symbol'] + list(df.columns[1:])
+
+    gene_sym = [gid_sym.split('|')[0] for gid_sym in df['Gene_Symbol']]
+    df['Gene_Symbol'] = gene_sym
+    print "Raw rna seq shape", df.shape
+    df = df[df['Gene_Symbol'] != '?']
+
+    
+    pt_df, nb_df = categorize_samples(df, can)
+    if type(pt_df) != int:
+        save_df(pt_df, 'rnaseq.txt', dest_dir, can+'_PT_')
+    if type(nb_df) != int:
+        save_df(nb_df, 'rnaseq.txt', dest_dir, can+'_NB_')
+
+
+def categorize_samples(df, can):
+    """ Check for duplicates, normal samples and then shorten TCGA id """
+    headers = df.columns[1:]
+    _summarize_sample_types(headers)    
     primary_tumors = []; normals = []
     for s in headers:
         stype = int(s.split('-')[3][:2])
-        if stype == 1:
+        if stype == TSS_CODE[can]:
             primary_tumors.append(s)
 
         if stype in range(10, 15):
             normals.append(s)
 
+    pt_df = 0; nb_df = 0;
     if primary_tumors:
-        short_id = ['-'.join(x.split('-')[:3]) for x in primary_tumors]
+        short_id = ['-'.join(x.split('-')[1:3]) for x in primary_tumors]
         if len(set(short_id)) != len(short_id):
             error("duplicate primary tumors?, total: %d, uniq: %d" %(len(p), len(set(p))))
         
         pt_df = df[[df.columns[0]] + primary_tumors]
         pt_df.columns = [pt_df.columns[0]] + short_id
-        save_df(pt_df, filename, dest_dir, prefix+'TP_')
+        
 
 
     if normals:
-        short_id = ['-'.join(x.split('-')[:3]) for x in normals]
+        short_id = ['-'.join(x.split('-')[1:3]) for x in normals]
         if len(set(short_id)) != len(short_id):
             error("duplicate normals?, total: %d, uniq: %d" %(len(p), len(set(p))))
        
         nb_df = df[[df.columns[0]] + normals]
         nb_df.columns = [nb_df.columns[0]] + short_id
-        save_df(nb_df, filename, dest_dir, prefix+'NB_')
 
-    return
+    return (pt_df, nb_df)
 
 total_samples = 0
 def preprocess_clinical_data(filename, dest_dir):
@@ -136,25 +135,6 @@ def preprocess_clinical_data(filename, dest_dir):
     global total_samples
     total_samples += len(df.columns)
     return df
-
-def _summarize_sample_types(cols):
-    sample_type = [int(c.split('-')[3][:2]) for c in cols]
-    summary = pd.Series(sample_type)
-
-    summary = summary.value_counts().sort_index()
-
-    print("TSS Code \t Sample Count")
-    for i in summary.index:
-        print("%d \t\t %d\n" %(i, summary.loc[i]))
-
-
-COHORTS = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
-COHORTS = "ACC LUAD LUSC"
-CANCER_TYPES = COHORTS.split()
-TSS_CODE = dict.fromkeys(CANCER_TYPES, 1)
-TSS_CODE.update({'LAML': 3, 'SKCM': 6})
-TSS_SYM = {1:'TP', 3:'TB', 6:'TM'}
-GDAC_PREFIX = 'gdac.broadinstitute.org_'
 
 
     
@@ -218,6 +198,43 @@ def preprocess_gdac_data():
         print(' '*20 +  c   + ' '*20)
         print('*'*50)
         
+        # RNA-Seq
+        rnaseq_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
+                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
+                    '.mRNAseq_Preprocess.Level_3.2014120600.0.0'
+        rnaseq_file = rnaseq_dir + os.sep + c + '.uncv2.mRNAseq_RSEM_all.txt'
+        print("-"*40)
+        print("\n\t mRNA-Seq")
+        print("-"*40)
+
+        if not os.path.exists(rnaseq_dir + '.tar.gz'):
+            print('Tar download is missing. Skipping %s' %c)
+            continue
+        
+        tar_extract(rnaseq_dir +'.tar.gz', os.path.dirname(rnaseq_dir)) 
+        preprocess_rnaseq_data(rnaseq_file, can_dir, c)
+
+        
+    
+        # CNA 
+        cna_dir =   input_dir + os.sep + 'analyses__2014_10_17' + \
+                    os.sep + c + os.sep + '20141017' + os.sep + GDAC_PREFIX + \
+                    c + '-TP.CopyNumber_Gistic2.Level_4.2014101700.0.0'
+        cna_file = cna_dir + os.sep + 'all_thresholded.by_genes.txt'
+                    
+        print("-"*40)        
+        print("\n\t CNA")
+        print("-"*40)
+        
+        if not os.path.exists(cna_dir + '.tar.gz'):
+            print('Tar download is missing. Skipping %s' %c)
+            continue
+        
+        tar_extract(cna_dir + '.tar.gz', os.path.dirname(cna_dir))
+
+        preprocess_cna_data(cna_file, can_dir, c)
+
+        continue
         
         # Mutation
         print("-"*40)
@@ -253,54 +270,20 @@ def preprocess_gdac_data():
         
         continue
         
-        # CNA 
-        cna_tar =   input_dir + os.sep + 'analyses__2014_10_17' + \
-                    os.sep + c + os.sep + '20141017' + os.sep + GDAC_PREFIX + \
-                    c + '-TP.CopyNumber_Gistic2.Level_4.2014101700.0.0.tar.gz'
-        cna_file = 'all_thresholded.by_genes.txt'
-                    
-        print("-"*40)        
-        print("\n\t CNA")
-        print("-"*40)
-
-        extracted_cna_file = tar_extract(cna_tar, cna_file, can_dir) 
-        preprocess_cna_data(extracted_cna_file, can_dir)
-
         
                 
-        # RNA-Seq
-        rnaseq_tar = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
-                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
-                    '.mRNAseq_Preprocess.Level_3.2014120600.0.0.tar.gz'
-        rnaseq_file = c + '.uncv2.mRNAseq_RSEM_normalized_log2.txt'
-        print("-"*40)
-        print("\n\t mRNA-Seq")
-        print("-"*40)
-
-        extracted_rnaseq_file = tar_extract(rnaseq_tar, rnaseq_file, can_dir) 
-        preprocess_rnaseq_data(extracted_rnaseq_file, can_dir)
-
-        continue
         
         
-
-
+        
 def tar_extract(tf, dest_dir):
-#    extratced_file= tf.split('.tar.gz')[0] + os.sep + filename
-#    
-#    if os.path.exists(extratced_file):
-#        #print("The file %s is already extracted" %extratced_file)
-#        return extratced_file
-        
+    """ Extract a tar file. """
     if os.path.exists(tf):
         tarfile.open(tf, 'r').extractall(dest_dir)
     else:
         error('Tar %s not found' %(tf))
-    
-#    return extratced_file
 
 
 # Program entry point    
 if __name__ == "__main__":
     df = preprocess_gdac_data()    
-    print total_samples
+    #print total_samples
