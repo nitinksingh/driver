@@ -137,98 +137,74 @@ def preprocess_clinical_data(filename, dest_dir):
     total_samples += len(df.columns)
     return df
 
-def preprocess_mutation_data(mut_dir, dest_dir, prefix=''):
-    mut_dir += os.sep + '*.maf.txt'
-    all_mut_files = glob.glob(mut_dir)
+def _summarize_sample_types(cols):
+    sample_type = [int(c.split('-')[3][:2]) for c in cols]
+    summary = pd.Series(sample_type)
 
-    samples = [os.path.basename(f).split('.')[0] for f in all_mut_files]
-    sample_type = [int(x.split('-')[3][:2]) for x in samples]
-    summary = pd.Series(sample_type).value_counts().sort_index()
+    summary = summary.value_counts().sort_index()
+
     print("TSS Code \t Sample Count")
     for i in summary.index:
         print("%d \t\t %d\n" %(i, summary.loc[i]))
-    # Process only primary tumors
-    mut_files = []
-    primary_samples = []
-    
-    cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
-    tss_code = dict.fromkeys(cohort.split(), 1)
-    tss_code.update({'LAML': 3})
-    
-    
-    for f in all_mut_files:
-        x = int(os.path.basename(f).split('.')[0].split('-')[3][:2])
-        y = '-'.join(os.path.basename(f).split('.')[0].split('-')[:3])
-        if x == tss_code[prefix]:
-            mut_files.append(f)
-            primary_samples.append(y)
 
-    if not len(primary_samples):
-        print("No sample avail for processing %s" %prefix)
-        return
+
+COHORTS = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
+COHORTS = "ACC LUAD LUSC"
+CANCER_TYPES = COHORTS.split()
+TSS_CODE = dict.fromkeys(CANCER_TYPES, 1)
+TSS_CODE.update({'LAML': 3, 'SKCM': 6})
+TSS_SYM = {1:'TP', 3:'TB', 6:'TM'}
+GDAC_PREFIX = 'gdac.broadinstitute.org_'
+
+
+    
+def _group_mutation_count(xdf, can):
+    """ Helper function to process mutation data"""
+    grouped = xdf.groupby('patient')
+    ret_df = pd.DataFrame()
+  
+    for p, i in grouped.groups.iteritems():
+        x = xdf.ix[i]
+        y = pd.DataFrame(x['Hugo_Symbol'].value_counts(), columns=[p])
+        ret_df = ret_df.join(y, how='outer')
         
-    p = pd.Series(primary_samples).value_counts().sort_index()
-    if len(set(primary_samples)) != len(primary_samples):
-            error('Duplicate samples?,  total: %d, uniq: %d' %(len(p), len(set(p))))
+    ret_df.fillna(0, inplace=True)
 
-    mut_categories = ['silent', 'nsilent']
+    # If there are any sample that is of non-primary type, raise error. 
+    # Otherwise, shortent the patient ids in the column
+    sample_type = [int(c.split('-')[3][:2]) for c in ret_df.columns]
+    summary = pd.Series(sample_type)
+    if summary[summary != TSS_CODE[can]].any():
+        _summarize_sample_types(ret_df.columns)
+        error('Non primary type sample found')
+    else:
+       sample_ids = ['-'.join(c.split('-')[1:3]) for c in ret_df.columns] 
+       ret_df.columns = sample_ids
 
-    # Some info variables
-    unknown_count = 0
-    for mut in mut_categories:
-        joint_dict = {}
-        for i, f in enumerate(mut_files):
-            # Non-silent df, and silent df
-            df = read_matrix_format_data(f, 0, usecols = [0, 8])
-            
-            if mut == 'nsilent':
-                # Substitute silent mutations: 0, non-silent: -1 (deleterious) 
-                sub_dict = dict.fromkeys(df['Variant_Classification'].unique(), -1)
-                sub_dict.update({'Silent':0})
-                # Drop duplicate mutations arising from the silent, non-silent categorization
-                df.replace(sub_dict.keys(), sub_dict.values(), inplace=True)
-            
-            if mut == 'silent':
-                # Substitute silent mutations: 1, non-silent: 0 (deleterious) 
-                sub_dict = dict.fromkeys(df['Variant_Classification'].unique(), 0)
-                sub_dict.update({'Silent':1})
-                # Drop duplicate mutations arising from the silent, non-silent categorization
-                df.replace(sub_dict.keys(), sub_dict.values(), inplace=True)
+    ret_df.insert(0, 'Hugo_Symbol', ret_df.index)
+    ret_df.reset_index(drop=True, inplace=True)
     
-            
-            # Aggregate all mutations happend in the same gene
-            df = df.groupby('Hugo_Symbol').sum()
-            
-            if 'Unknown' in df.index:
-                unknown_count += df.loc["Unknown"].shape[0]
-                df.drop("Unknown", axis=0, inplace=True)
-    
-            x = os.path.basename(f).split('.')[0] 
-            df.columns = ['-'.join(x.split('-')[:3])]
-            joint_dict.update(df.to_dict())        
-            joint_df = pd.DataFrame.from_dict(joint_dict)
-        
-        print("dropped 'Unknown' genes count: %d" %unknown_count)
-        print("Saving in: %s" %dest_dir)
-        print joint_df.shape
-        joint_df.insert(0, 'Gene_Symbol', joint_df.index)
-        joint_df.fillna(0, inplace=True)    
-        save_df(joint_df, 'mutation.txt', dest_dir, prefix+'_' + mut + '_')
-        del(joint_df)
+    return ret_df
 
 def process_mutation_data_mutsig(mut_file, dest_dir, can):
-    pass
+    df = pd.read_table(mut_file, header=0)
+    df = df[[u'Hugo_Symbol', u'Variant_Classification', u'Variant_Type', u'Mutation_Status', u'patient']]#, u'is_silent', u'is_coding', u'is_flank', u'is_indel', u'is_ins', u'is_del', u'is_missense', u'is_nonsense', u'is_splice', u'is_silent']].copy()
+    sdf = df[(df.Mutation_Status == 'Somatic') & (df.Variant_Classification =='Silent')][[u'Hugo_Symbol', u'patient']]
+    nsdf = df[(df.Mutation_Status == 'Somatic') & (df.Variant_Classification !='Silent')] [[u'Hugo_Symbol',u'patient']]
+    
+    nsdf = _group_mutation_count(nsdf, can)
+    save_df(nsdf, 'mutation.txt', dest_dir, can+'_nsilent_')
+    
+    sdf = _group_mutation_count(sdf, can)
+    save_df(sdf, 'mutation.txt', dest_dir, can+'_silent_')
     
 def preprocess_gdac_data():
-    """ Gather filenames for GDAC downloaded TCGA data """
+    """ Construct filenames for GDAC downloaded TCGA data and call preprocessing
+    functions for Mutation/CNA/mRNASeq/Clinical data respectively """
     input_dir = '../data'
     output_dir = input_dir + os.sep + 'processed'
     
-    cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
-    CANCER_TYPES = cohort.split(" ")
-
-    GDAC_PREFIX = 'gdac.broadinstitute.org_'
-
+    
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
         
@@ -251,34 +227,11 @@ def preprocess_gdac_data():
         mut_dir = input_dir + os.sep + 'analyses__2014_10_17' + \
                  os.sep + c + os.sep + '20141017' + os.sep + \
                  'MutSigNozzleReportCV' + os.sep
-        if c == 'LAML':
-            mut_file = mut_dir  + c + '-TB.final_analysis_set.maf'
-        elif c == 'SKCM':
-            mut_file = mut_dir  + c + '-TM.final_analysis_set.maf'
-        else:
-            mut_file = mut_dir  + c + '-TP.final_analysis_set.maf'
-       
-        process_mutation_data_mutsig(mut_file, can_dir, c)
-        print mut_file; error()
-        continue
-#        mut_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
-#                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
-#                    '.Mutation_Packager_Calls.Level_3.2014120600.0.0'
-#        
-#        # Tar was extracted in some previos run
-#        if os.path.exists(mut_dir):
-#            preprocess_mutation_data(mut_dir, can_dir, c)
-#            continue
-#        
-#        if not os.path.exists(mut_dir + '.tar.gz'):
-#            print('Tar download is missing. Skipping %s' %c)
-#            continue
-#        
-#            
-#        tar_extract(mut_dir + '.tar.gz', os.path.dirname(mut_dir))
-#        
-#        preprocess_mutation_data(mut_dir, can_dir, c) 
 
+        mut_file = mut_dir  + c + '-' + TSS_SYM[TSS_CODE[c]] +'.final_analysis_set.maf'
+        process_mutation_data_mutsig(mut_file, can_dir, c)
+
+        continue
 
         # Clinical
         print("-"*40)

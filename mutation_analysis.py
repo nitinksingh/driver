@@ -74,7 +74,7 @@ def get_pancancer_mutation_summary(agg_axis=0, refresh=False):
             continue
 
         # Read non-silent mutations and convert mutations to 1 from -1
-        nsdf = pd.read_table(f1, header=0, index_col=0)*-1
+        nsdf = pd.read_table(f1, header=0, index_col=0)
         nsilent = nsdf.sum(axis=agg_axis)
         
         sdf = pd.read_table(f2, header=0, index_col=0)
