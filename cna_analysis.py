@@ -30,11 +30,10 @@ def generate_cna_scores(can_type):
         print("processed cna data is not found: %s" %can_type)
         return
 
-    print can_type, cna_df.shape
     score_df = pathway.score_pathways(path_df, cna_df, data_type='cna')
     score_df.dropna(how='all', inplace=True)
     score_df.to_csv(results_dir + os.sep + 'cna_pathway_score.txt', index=True, index_label='Pathway', sep='\t')
-    print('Wrote ' + can_type + 'cna_pathway_score.txt %d x %d' %score_df.shape )
+    print('Wrote ' + can_type + os.sep + 'cna_pathway_score.txt %d x %d' %score_df.shape )
 
 
 
@@ -93,10 +92,8 @@ def get_pancancer_cna_summary(agg_axis=0, refresh=False):
 
 if __name__ == '__main__':
     """ Gen pathway cna correlation with non-silent cna counts"""
-    cohort = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
-    can_type = cohort.split()
 
-    for can in can_type:
+    for can in CANCER_TYPES:
         generate_cna_scores(can)
 
 
