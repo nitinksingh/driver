@@ -61,7 +61,6 @@ def survival_analysis(df, kmshow=False):
             kmf.fit(T[ix], E[ix], label=str(g) + " (" + str(p_val) + ")")
             kmf.plot(ax=ax)
 
-
     return p_values
 
 

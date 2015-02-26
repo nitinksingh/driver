@@ -44,7 +44,9 @@ def scorer(df, data_type, opt):
         return ret_s
 
     if data_type == 'rna':
-        error('Scoring Not implemented yet')
+        sum_score = df.abs().sum(axis=0)
+        ret_s = sum_score/df.shape[0]
+        return ret_s
 
     return df
 

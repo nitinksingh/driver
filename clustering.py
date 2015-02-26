@@ -66,9 +66,7 @@ def spectral_bicoclustering(X, n_clusters):
 
     plt.show() 
 
-def get_data():
-    can = 'LUAD'
-    
+def get_data(can='LUAD', data_type='mut'):
     # Load clinical file drop patients with no followup or death time available
     clncl_fpath = '../data/processed/' + can + os.sep + can + '_clinical.csv'
     clinical_df = pd.read_table(clncl_fpath, index_col=0, header=0, sep='\t').transpose()
@@ -80,12 +78,23 @@ def get_data():
     clinical_df.insert(1, 'right_sensor', clinical_df['patient.vital_status'] != 'dead')
     
     # Now load pathway scores
-    opt = 'silent'
-    input_fpath = '../results/' + can + os.sep + opt +'_mutation_pathway_score.txt'
-    sdf = pd.read_table(input_fpath, sep='\t', header=0, index_col=0)
-    opt = 'nsilent'
-    input_fpath = '../results/' + can + os.sep + opt +'_mutation_pathway_score.txt'
-    nsdf = pd.read_table(input_fpath, sep='\t', header=0, index_col=0)
+    if data_type == 'mut':
+        opt = 'silent'
+        input_fpath = '../results/' + can + os.sep + opt +'_mutation_pathway_score.txt'
+        sdf = pd.read_table(input_fpath, sep='\t', header=0, index_col=0)
+        opt = 'nsilent'
+        input_fpath = '../results/' + can + os.sep + opt +'_mutation_pathway_score.txt'
+        nsdf = pd.read_table(input_fpath, sep='\t', header=0, index_col=0)
+    elif data_type == 'rna':
+        opt = 'NB'
+        input_fpath = '../results/' + can + os.sep + opt +'_rnaseq_pathway_score.txt'
+        sdf = pd.read_table(input_fpath, sep='\t', header=0, index_col=0)
+        opt = 'PT'
+        input_fpath = '../results/' + can + os.sep + opt +'_rnaseq_pathway_score.txt'
+        nsdf = pd.read_table(input_fpath, sep='\t', header=0, index_col=0)
+    else:
+        error('Unknown data_type')
+
     
     res = pd.Series(index=sdf.index)
     for p in sdf.index:

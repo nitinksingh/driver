@@ -17,7 +17,7 @@ import glob
 
 COHORTS = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
 #COHORTS = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP"
-#COHORTS = "ACC LUAD LUSC"
+COHORTS = "ACC BRCA LUAD LUSC"
 CANCER_TYPES = COHORTS.split()
 TSS_CODE = dict.fromkeys(CANCER_TYPES, 1)
 TSS_CODE.update({'LAML': 3, 'SKCM': 6})
@@ -130,7 +130,7 @@ def preprocess_clinical_data(filename, dest_dir):
 
 
     df.columns = df.loc['patient.bcr_patient_barcode']
-    df.columns = [x.upper() for x in df.columns]
+    df.columns = ['-'.join(x.upper().split('-')[1:]) for x in df.columns]
     df.dropna(axis=(0, 1), how='all', inplace=True)
     df.insert(0, 'patient_info', df.index)
 
