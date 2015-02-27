@@ -14,12 +14,11 @@ import numpy as np
 from utils import error
 
 
-def score_pathways(path_df, data_df, data_type, opt=''):
+def score_pathways(path_df, data_df, data_type, **kwargs):
     """ Score each pathway against a given gene by samples matrix of
     mutation/mRNASeq/CNA data. Gene should be index of the data frame i.e.
     there should not be any column with gene ids.
     """
-
     score_df = pd.DataFrame(index=path_df.columns, columns=data_df.columns)
     for p in path_df.columns:
         try:
@@ -29,12 +28,23 @@ def score_pathways(path_df, data_df, data_type, opt=''):
             avail_genes = filter(lambda x: x in data_df.index, path_df[p].dropna())
             p_df = data_df.loc[avail_genes]
 
-        score_s = scorer(p_df, data_type, opt)
+        # Drop genes that have missing values in this geneset/pathway
+        p_df.dropna(inplace=True)
+        if p_df.empty:
+            score_df.drop(p, inplace=True)
+            continue
+
+        score_s = scorer(p_df, data_type, **kwargs)
         score_df.loc[p] = score_s
+
+    pinf = score_df == np.inf
+    ninf = score_df == -np.inf
+    # Check for NaN, inf
+    if score_df.isnull().any().any() or ninf.any().any() or pinf.any().any():
+        error('score df has weired values')
     return score_df
 
-def scorer(df, data_type, opt):
-
+def scorer(df, data_type, **kwargs):
     """ Call individual scoring functions that are specific to data type"""
     # Sum of absolute values devided by the nuber of genes in the geneset
     if data_type == 'mut' or data_type == 'cna':
@@ -48,6 +58,7 @@ def scorer(df, data_type, opt):
         ret_s = sum_score/df.shape[0]
         return ret_s
 
+        
     return df
 
 def preprocess_pathway_data():

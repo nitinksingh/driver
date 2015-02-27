@@ -92,12 +92,25 @@ def get_data(can='LUAD', data_type='mut'):
         opt = 'PT'
         input_fpath = '../results/' + can + os.sep + opt +'_rnaseq_pathway_score.txt'
         nsdf = pd.read_table(input_fpath, sep='\t', header=0, index_col=0)
+    elif data_type == 'rna_centroid':
+        # Sort the pathways per mutation data significant
+        mut_df, clinical_df = get_data(can, data_type='mut')
+        input_fpath = '../results/' + can + os.sep + 'PT_centroid_rnaseq_pathway_score.txt'
+        pt_df = pd.read_table(input_fpath, sep='\t', header=0, index_col=0)
+        
+        try:
+            sorted_pt_df = pt_df.loc[mut_df.index]
+        except KeyError:
+            sorted_mut_path = filter(lambda x: x in pt_df.index, mut_df.index)
+            sorted_pt_df = pt_df.loc[sorted_mut_path]
+        return (sorted_pt_df, clinical_df)
     else:
         error('Unknown data_type')
 
     
-    res = pd.Series(index=sdf.index)
-    for p in sdf.index:
+    common = nsdf.index.intersection(sdf.index)
+    res = pd.Series(index=common)
+    for p in common:
         res.loc[p] = -1*math.log10(stats.ttest_ind(sdf.loc[p], nsdf.loc[p], equal_var=False)[1])
         
     res.sort(ascending=False)
