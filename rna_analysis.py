@@ -37,7 +37,8 @@ def generate_rna_scores():
             print can_type, samp_df.shape
             score_df = pathway.score_pathways(path_df, samp_df, data_type='rna')
             score_df.dropna(how='all', inplace=True)
-            score_df.to_csv(results_dir + os.sep + samp +'_rnaseq_pathway_score.txt', index=True, index_label='Pathway', sep='\t', float_format='%.2f')
+            score_df = score_df.applymap(lambda x: '%.3f' %x)
+            score_df.to_csv(results_dir + os.sep + samp +'_rnaseq_pathway_score.txt', index=True, index_label='Pathway', sep='\t', float_format='%.3f')
             print("Wrote " + can_type + " " + samp +'_rnaseq_pathway_score.txt %d x %d' %score_df.shape )
 
 def generate_rna_scores_centroid():
@@ -83,7 +84,8 @@ def generate_rna_scores_centroid():
             score_s = np.sqrt(dist_df.applymap(lambda x: x**2).sum(axis=0))
             score_df.loc[p] = score_s/dist_df.shape[0]
         score_df.dropna(how='all', inplace=True)
-        score_df.to_csv(results_dir + os.sep + 'PT_centroid_rnaseq_pathway_score.txt', index=True, index_label='Pathway', sep='\t', float_format='%.2f')
+        score_df = score_df.applymap(lambda x: '%.3f' %x)
+        score_df.to_csv(results_dir + os.sep + 'PT_centroid_rnaseq_pathway_score.txt', index=True, index_label='Pathway', sep='\t', float_format='%.3f')
         print("Wrote " + can_type + " " + 'PT_centroid_rnaseq_pathway_score.txt %d x %d' %score_df.shape )
 # Entry point, test code
 if __name__ == '__main__':

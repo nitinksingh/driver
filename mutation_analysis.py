@@ -36,7 +36,8 @@ def generate_mutation_scores():
             print can_type, mut_df.shape
             score_df = pathway.score_pathways(path_df, mut_df, data_type='mut')
             score_df.dropna(how='all', inplace=True)
-            score_df.to_csv(results_dir + os.sep + mut +'_mutation_pathway_score.txt', index=True, index_label='Pathway', sep='\t', float_format='%.2f')
+            score_df = score_df.applymap(lambda x: '%.3f' %x)
+            score_df.to_csv(results_dir + os.sep + mut +'_mutation_pathway_score.txt', index=True, index_label='Pathway', sep='\t', float_format='%.3f')
             print("Wrote " + can_type + " " + mut +'_mutation_pathway_score.txt %d x %d' %score_df.shape )
 
     
@@ -99,8 +100,10 @@ def get_pancancer_mutation_summary(agg_axis=0, refresh=False):
 
     
     # Save for future usage
-    ns_summary.to_csv(ns_outf, sep='\t', header=True, index=True, float_format='%.2f')
-    s_summary.to_csv(s_outf, sep='\t', header=True, index=True, float_format='%.2f')
+    ns_summary = ns_summary.applymap(lambda x: '%.3f' %x)
+    s_summary = s_summary.applymap(lambda x: '%.3f' %x)
+    ns_summary.to_csv(ns_outf, sep='\t', header=True, index=True, float_format='%.3f')
+    s_summary.to_csv(s_outf, sep='\t', header=True, index=True, float_format='%.3f')
     print("Wrote %s %d x %d matrix" %(os.path.basename(ns_outf), len(ns_summary.index), len(ns_summary.columns)))          
     print("Wrote %s %d x %d matrix" %(os.path.basename(s_outf), len(s_summary.index), len(s_summary.columns)))          
     
