@@ -17,7 +17,6 @@ import glob
 
 COHORTS = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP GBM GBMLGG HNSC KICH KIRC KIRP LAML LGG LIHC LUAD LUSC MESO OV PAAD PRAD READ SARC SKCM STAD TGCT THCA THYM UCEC UCS UVM"
 #COHORTS = "ACC BLCA BRCA CESC CHOL COAD COADREAD DLBC ESCA FPPP"
-COHORTS = "ACC BRCA LUAD LUSC"
 CANCER_TYPES = COHORTS.split()
 TSS_CODE = dict.fromkeys(CANCER_TYPES, 1)
 TSS_CODE.update({'LAML': 3, 'SKCM': 6})
@@ -222,6 +221,24 @@ def preprocess_gdac_data():
         print(' '*20 +  c   + ' '*20)
         print('*'*50)
 
+        # Clinical
+        print("-"*40)
+        print("\n\t Clinical")
+        print("-"*40)
+
+        clinical_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
+                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
+                    '.Merge_Clinical.Level_1.2014120600.0.0'
+        clinical_file = clinical_dir + os.sep + c + '.merged_only_clinical_clin_format.txt'
+
+
+        if os.path.exists(clinical_dir + '.tar.gz'):
+	        tar_extract(clinical_dir + '.tar.gz', os.path.dirname(clinical_dir))
+	        preprocess_clinical_data(clinical_file, can_dir)
+        else:
+            print('Tar download is missing. Skipping %s' %c)
+
+        continue
         # RNA-Seq
         rnaseq_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
                     c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
@@ -271,22 +288,6 @@ def preprocess_gdac_data():
             print('{} does not exist. Skipping..'.format(os.path.basename(mut_file)))
 
 
-        # Clinical
-        print("-"*40)
-        print("\n\t Clinical")
-        print("-"*40)
-
-        clinical_dir = input_dir + os.sep + 'stddata__2014_12_06' + os.sep + \
-                    c + os.sep + '20141206' + os.sep + GDAC_PREFIX + c + \
-                    '.Merge_Clinical.Level_1.2014120600.0.0'
-        clinical_file = clinical_dir + os.sep + c + '.merged_only_clinical_clin_format.txt'
-
-
-        if os.path.exists(clinical_dir + '.tar.gz'):
-	        tar_extract(clinical_dir + '.tar.gz', os.path.dirname(clinical_dir))
-	        preprocess_clinical_data(clinical_file, can_dir)
-        else:
-            print('Tar download is missing. Skipping %s' %c)
 
 
 
