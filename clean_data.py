@@ -119,13 +119,11 @@ def categorize_samples(df, can):
 
 total_samples = 0
 def preprocess_clinical_data(filename, dest_dir):
-
     try:
         df = pd.read_table(filename, index_col=0, header=0)
     except IOError:
         print('****** Unable to open {} ******'.format(os.path.basename(filename)))
         return
-
 
     df.columns = df.loc['patient.bcr_patient_barcode']
     df.columns = ['-'.join(x.upper().split('-')[1:]) for x in df.columns]
@@ -133,17 +131,34 @@ def preprocess_clinical_data(filename, dest_dir):
     df.insert(0, 'patient_info', df.index)
 
     params = ['patient.days_to_death','patient.days_to_last_followup']
-    params += ['patient.days_to_birth']
-    params += ['patient.vital_status', 'patient.gender']
-    params += ['patient.prior_dx', 'patient.race', 'patient.radiation_therapy']
-    params += ['patient.primary_therapy_outcome_success', 'patient.primary_pathology.histological_type']
+    params += ['patient.days_to_birth', 'patient.vital_status', 'patient.gender']
+    params += ['patient.primary_pathology.histological_type']
+#    params += ['patient.prior_dx', 'patient.race', 'patient.radiation_therapy']
+#    params += ['patient.primary_therapy_outcome_success']
 
+    # Take the params that are available
+    params = df.index.intersection(params)
     df = df.loc[params]
-    # Drop extra rows
-#    df = df.loc[~ df['patient_info'].str.contains('^patient.drugs.drug')]
-#    df = df.loc[~ df['patient_info'].str.contains('^admin.')]
-#    df = df.loc[~ df['patient_info'].str.contains('^patient.radiations.')]
-#    df = df.loc[~ df['patient_info'].str.contains('^patient.bcr')]
+
+    # Check for auxilary information
+    can = os.path.basename(dest_dir)
+    if can in ['CESC', 'HNSC']:
+        aux_file = os.path.dirname(filename) + os.sep + can + '.merged_only_auxiliary_clin_format.txt'
+        aux_df = pd.read_table(aux_file, index_col=0, header=0)
+        aux_s = aux_df.loc['patient.hpv_test_results.hpv_test_result.hpv_status']
+        aux_s.name = 'HPV'
+        aux_s.index = [ '-'.join(x.split('-')[1:]).upper() for x in aux_df.loc['patient.bcr_patient_barcode']]
+        aux_s['patient_info'] = 'Auxiliary'
+        df = df.append(aux_s)
+
+    if can in ['COAD', 'READ', 'COADREAD', 'STAD', 'UCEC', 'UCS']:
+        aux_file = os.path.dirname(filename) + os.sep + can + '.merged_only_auxiliary_clin_format.txt'
+        aux_df = pd.read_table(aux_file, index_col=0, header=0)
+        aux_s = aux_df.loc['patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status']
+        aux_s.name = 'MSI'
+        aux_s.index = [ '-'.join(x.split('-')[1:]).upper() for x in aux_df.loc['patient.bcr_patient_barcode']]
+        aux_s['patient_info'] = 'Auxiliary'
+        df = df.append(aux_s)
 
     clinical_of = dest_dir + os.sep + os.path.basename(dest_dir) + '_clinical.csv'
     df.to_csv(clinical_of, index=False, sep='\t')

@@ -20,12 +20,15 @@ from lifelines.statistics import logrank_test
 
 
 
-def survival_analysis(df, kmshow=False):
+from lifelines import KaplanMeierFitter
+from lifelines.statistics import logrank_test
+# import sklearn.metrics as metrics
+def survival_analysis(df, kmshow=True):
     """ Perform survival analysis based on groups in the population
     Parmeters
     ---------------
     df: The input dataframe must have time, sensor, groups columns
-    
+
     Return
     ---------------
     KM Plot
@@ -34,33 +37,32 @@ def survival_analysis(df, kmshow=False):
     T = df['time']
     E = ~ df['right_sensor']
     G = df['groups']
-    
+
     groups = list(G.unique())
     ix = (G == groups[0])
-    
+
     # p-value of this group v/s others
     p_values = pd.Series(index=groups)
     spt = logrank_test(T[ix], T[~ix], E[ix], E[~ix], suppress_print=True )
-    p_val = '%.2E' % spt[1]
+
+    p_val = '%.2E' % spt.p_value
     p_values[groups[0]] = p_val
-    
+
     # Fit and plot Kaplan-Meir Plot
     if kmshow:
         kmf = KaplanMeierFitter()
-        kmf.fit(T[ix], E[ix], label=str(groups[0]) + " (" + str(p_val) + ")")    
-        ax = kmf.plot()
+        kmf.fit(T[ix], E[ix], label=str(groups[0]) + " (" + str(p_val) + ")")
+        ax = kmf.plot(ci_show=False, show_censors=True, flat=True)
 
     for g in groups[1:]:
         ix = (G == g)
         # p-value of this group v/s others
         spt = logrank_test(T[ix], T[~ix], E[ix], E[~ix], suppress_print=True )
-        p_val = '%.2E' % spt[1]
+        p_val = '%.2E' % spt.p_value
         p_values[g] = p_val
-        
+
         if kmshow:
             kmf.fit(T[ix], E[ix], label=str(g) + " (" + str(p_val) + ")")
-            kmf.plot(ax=ax)
+            kmf.plot(ax=ax, ci_show=False, show_censors=True, flat=True)
 
     return p_values
-
-
