@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import scipy.stats as stats
+from utils import error
 
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
@@ -113,7 +114,7 @@ def spectral_bicoclustering(X, n_clusters):
 
     plt.show()
 
-def get_data(can='LUAD', data_type='mut'):
+def get_data(can='LUAD', data_type='mut', nsdf_norm_factor=1):
     # Load clinical file drop patients with no followup or death time available
     clncl_fpath = '../data/processed/' + can + os.sep + can + '_clinical.csv'
     clinical_df = pd.read_table(clncl_fpath, index_col=0, header=0, sep='\t').transpose()
@@ -154,7 +155,7 @@ def get_data(can='LUAD', data_type='mut'):
     else:
         error('Unknown data_type')
 
-
+    nsdf = nsdf/nsdf_norm_factor
     common = nsdf.index.intersection(sdf.index)
     res = pd.Series(index=common)
     for p in common:
@@ -169,5 +170,5 @@ def get_data(can='LUAD', data_type='mut'):
 if __name__ == "__main__":
     (sig_nsdf, clinical_df) = get_data()
     X = sig_nsdf[:50].transpose().values
-
-    spectral_bicoclustering(X, 2)
+    hierarchical_clustering(X[:10,:5])
+    #spectral_bicoclustering(X, 2)
