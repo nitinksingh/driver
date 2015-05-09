@@ -22,11 +22,23 @@ import sklearn.metrics as metrics
 import pathway_analysis as pathway
 
 # Adopted from to OxanaSachenkova/hclust-python at github
-def hierarchical_clustering(data_array, labels=''):
+def cluster_pathway_score(cancer_type, num_pathways=5):
+    # Load mutation data aggregated at the level of pathways
+    (sig_nsdf, clinical_df) = get_data(cancer_type, 'mut', nsdf_norm_factor=1)
+    clinical_df = clinical_df.loc[clinical_df.time > 0]
+    common_samples = sig_nsdf.columns.intersection(clinical_df.index)
+    sig_nsdf = sig_nsdf[common_samples]
+    clinical_df = clinical_df.loc[common_samples] # redaundant as of now
+    df = sig_nsdf.iloc[:num_pathways]
+
+    labels = df.columns
+    data_array = df.transpose().values
+
+
+    # Do heirarchical clustering on samples
     if type(labels) == str:
         labels = map(str, range(1, data_array.shape[0]+1))
     data_dist = pdist(data_array) # computing the distance
-    data_link = linkage(data_dist) # computing the linkage
 
     # Compute and plot first dendrogram.
 
@@ -62,7 +74,7 @@ def hierarchical_clustering(data_array, labels=''):
 
     # Gather cluster member count
     membership = pd.Series(fcluster(Y, 10, 'maxclust'), index=labels, name='groups')
-    return membership
+    return (membership, clinical_df, df)
 
 
 
@@ -171,7 +183,7 @@ def get_data(can='LUAD', data_type='mut', nsdf_norm_factor=1):
 
 # Adopted from to OxanaSachenkova/hclust-python at github
 def combined_heatmap(cancer_type, num_pathways=5, num_genes=10, groups=None):
-    
+
     # Load preprocessed mutation data
     data_dir = '../data/processed/' + cancer_type
     path_df = pathway.preprocess_pathway_data()
@@ -201,7 +213,7 @@ def combined_heatmap(cancer_type, num_pathways=5, num_genes=10, groups=None):
     Z2 = dendrogram(Y,labels=labels, leaf_font_size=8)#, color_list=color_list.values)
     idx2 = Z2['leaves']
     ax2.set_yticks([])
-   
+
     # Cluster Ids
     ax3 = fig.add_axes([x0,y01+0.1005,w,0.002])
     if type(groups) is type(None):
@@ -217,20 +229,20 @@ def combined_heatmap(cancer_type, num_pathways=5, num_genes=10, groups=None):
     axmatrix = fig.add_axes([x0,y01,w,0.1])
     D = df.loc[:,df.columns[idx2]].values
     im = axmatrix.matshow(D, aspect='auto', origin='upper', cmap=plt.cm.YlGnBu)
-  
+
     axmatrix.set_yticklabels([''] + list(df.index), rotation=0)
     axmatrix.set_xticks([])
 
-    
+
     # Plot colorbar.
     axcolor = fig.add_axes([0.91,y01,0.02,0.1])
     plt.colorbar(im, cax=axcolor)
-    
+
     cmaps = ['Oranges', 'binary', 'Spectral']
     h = y01/df.shape[0] - df.shape[0]*0.01
     for i in range(df.shape[0]):
         y0 = y01-h*(i+1)
-    
+
         # Plot individual mutation
         ax3 = fig.add_axes([x0,y0,w, h] )
         path_genes = path_df[df.index[i]].dropna()
@@ -247,12 +259,12 @@ def combined_heatmap(cancer_type, num_pathways=5, num_genes=10, groups=None):
         # Plot colorbar.
         axcolor2 = fig.add_axes([0.91,y0,0.02,h])
         plt.colorbar(im2, cax=axcolor2)
-        
+
 #     print path_genes_df.head()
     plt.show()
 
     return idx2
-    
+
 if __name__ == "__main__":
     (sig_nsdf, clinical_df) = get_data()
     X = sig_nsdf[:50].transpose().values
