@@ -206,7 +206,7 @@ def combined_heatmap(cancer_type, num_pathways=5, num_genes=10, groups=None):
     data_dist = pdist(data_array) # computing the distance
     Y = linkage(data_dist, method='single')
 
-    x0 = 0.2; w=0.7; y00 = 0.93; y01 = 0.8; y = 25
+    x0 = 0.2; w=0.7; y00 = 0.93; y01 = 0.8; y = 5*num_pathways
     # Compute and plot first dendrogram.
     fig = plt.figure(figsize=(20,y))
     ax2 = fig.add_axes([x0,y00,w,0.06])
@@ -229,8 +229,8 @@ def combined_heatmap(cancer_type, num_pathways=5, num_genes=10, groups=None):
     axmatrix = fig.add_axes([x0,y01,w,0.1])
     D = df.loc[:,df.columns[idx2]].values
     im = axmatrix.matshow(D, aspect='auto', origin='upper', cmap=plt.cm.YlGnBu)
-
-    axmatrix.set_yticklabels([''] + list(df.index), rotation=0)
+    axmatrix.set_yticks(range(len(df.index)))
+    axmatrix.set_yticklabels(list(df.index), rotation=0)
     axmatrix.set_xticks([])
 
 
@@ -239,10 +239,10 @@ def combined_heatmap(cancer_type, num_pathways=5, num_genes=10, groups=None):
     plt.colorbar(im, cax=axcolor)
 
     cmaps = ['Oranges', 'binary', 'Spectral']
-    h = y01/df.shape[0] - df.shape[0]*0.01
+    h = y01/df.shape[0] #- df.shape[0]*0.01
     for i in range(df.shape[0]):
         y0 = y01-h*(i+1)
-
+#        print x0, y0, w, h# continue
         # Plot individual mutation
         ax3 = fig.add_axes([x0,y0,w, h] )
         path_genes = path_df[df.index[i]].dropna()
@@ -260,13 +260,27 @@ def combined_heatmap(cancer_type, num_pathways=5, num_genes=10, groups=None):
         axcolor2 = fig.add_axes([0.91,y0,0.02,h])
         plt.colorbar(im2, cax=axcolor2)
 
+        # Plot Pathway name.
+        ax4 = fig.add_axes([0.14,y0,0.02,h])
+        ax4.text(0.5, 0.5, df.index[i], horizontalalignment='center', 
+                 verticalalignment='center', fontsize=14, rotation='vertical')
+        ax4.set_xticks([])
+        ax4.set_yticks([])
+        ax4.axis('off')
+
 #     print path_genes_df.head()
+    fig.suptitle('Driver Pathways: ' + cancer_type, fontsize=18)
+#    outdir = '../notes/draft-manuscript/figures/heatmaps/scratch/'
+#    outfile = outdir + cancer_type + '_heatmap_pathways' + str(num_pathways) + '_genes' + str(num_genes) + '.png'
+#    fig.savefig(outfile, transparent=True, bbox_inches='tight', pad_inches=0)
     plt.show()
 
-    return idx2
+    return fig
 
 if __name__ == "__main__":
-    (sig_nsdf, clinical_df) = get_data()
-    X = sig_nsdf[:50].transpose().values
-    hierarchical_clustering(X[:10,:5])
-    #spectral_bicoclustering(X, 2)
+    combined_heatmap('ACC', 3)
+#    (sig_nsdf, clinical_df) = get_data()
+#    X = sig_nsdf[:50].transpose().values
+    
+#    hierarchical_clustering(X[:10,:5])
+#    spectral_bicoclustering(X, 2)
